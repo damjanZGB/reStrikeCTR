@@ -293,117 +293,200 @@ oled_rotation_t oled_init_user(oled_rotation_t rotation) {
     return OLED_ROTATION_0;
 }
 
-// Render a horizontal VU meter bar: "label [####......] val"
-static void render_vu_bar(const char *label, uint8_t value) {
+// Helper function for rendering sleek 10-segment level gauges
+static void render_gauge_row(uint8_t row, const char *label, uint8_t percent) {
+    oled_set_cursor(0, row);
     oled_write_P(label, false);
     oled_write_P(PSTR("["), false);
-    uint8_t bars = value / 10;
+    uint8_t filled = (percent > 100 ? 100 : percent) / 10;
     for (uint8_t i = 0; i < 10; i++) {
-        oled_write_P((i < bars) ? PSTR("#") : PSTR("."), false);
+        if (i < filled) {
+            oled_write_P(PSTR("#"), false);
+        } else {
+            oled_write_P(PSTR("."), false);
+        }
     }
-    oled_write_P(PSTR("]\n"), false);
+    oled_write_P(PSTR("] "), false);
+    char p_str[4];
+    itoa(percent > 100 ? 100 : percent, p_str, 10);
+    if (percent < 10) oled_write_P(PSTR("  "), false);
+    else if (percent < 100) oled_write_P(PSTR(" "), false);
+    oled_write(p_str, false);
+    oled_write_P(PSTR("%"), false);
 }
 
 bool oled_task_user(void) {
-    oled_set_cursor(0, 0);
     uint8_t current_page = get_highest_layer(layer_state);
 
     switch (current_page) {
-        // ─── PAGE 1: OBS BROADCAST (8 Rows × 20 Chars) ───
+        // ─── PAGE 1: BROADCAST HUD (Studio Pro) ───
         case _PAGE_BROADCAST: {
-            oled_write_P(PSTR(" BROADCAST  [P1/4] \n"), false);
+            // Row 0: Inverted Header Banner
+            oled_set_cursor(0, 0);
+            oled_write_P(PSTR(" RESTRIKE CTR [P1/4] "), true);
 
-            oled_write_P(PSTR("CAM: [ "), false);
+            // Row 1: Active Camera & Live State
+            oled_set_cursor(0, 1);
+            oled_write_P(PSTR("CAM: "), false);
             char cam_str[3];
             itoa(active_camera, cam_str, 10);
             oled_write(cam_str, false);
-            oled_write_P(PSTR(" ]      "), false);
-
+            oled_write_P(PSTR("    STATUS:"), false);
             if (is_recording) {
-                oled_write_P(PSTR("*REC*\n"), true);
+                oled_write_P(PSTR(" *REC*  "), true);
             } else {
-                oled_write_P(PSTR(" STBY\n"), false);
+                oled_write_P(PSTR("  STBY  "), false);
             }
 
-            render_vu_bar(PSTR("ZOOM: "), zoom_level);
+            // Row 2: Zoom Gauge
+            render_gauge_row(2, PSTR("ZM  "), zoom_level);
 
-            oled_write_P(PSTR("JOG:  "), false);
-            if (scrub_dir > 0) oled_write_P(PSTR(">> FWD (x2)  \n"), false);
-            else if (scrub_dir < 0) oled_write_P(PSTR("<< REV (x2)  \n"), false);
-            else oled_write_P(PSTR("-- IDLE      \n"), false);
+            // Row 3: Jog / Shuttle Status
+            oled_set_cursor(0, 3);
+            oled_write_P(PSTR("JOG ["), false);
+            if (scrub_dir > 0) oled_write_P(PSTR(" >> FWD x2  "), false);
+            else if (scrub_dir < 0) oled_write_P(PSTR(" << REV x2  "), false);
+            else oled_write_P(PSTR(" -- IDLE -- "), false);
+            oled_write_P(PSTR("] 1x"), false);
 
-            oled_write_P(PSTR("JOY:  PAN/TILT READY\n"), false);
-            oled_write_P(PSTR("TALLY: AUTO (RGB)   \n"), false);
-            oled_write_P(PSTR("ENC1:ZOOM   ENC2:JOG\n"), false);
-            oled_write_P(PSTR("E1-CLICK: NEXT PAGE \n"), false);
+            // Row 4: Pan / Tilt Joystick
+            oled_set_cursor(0, 4);
+            oled_write_P(PSTR("JOY  PAN:00%  TLT:00%"), false);
+
+            // Row 5: Tally Status
+            oled_set_cursor(0, 5);
+            oled_write_P(PSTR("TALLY: [AUTO] RGB LINK"), false);
+
+            // Row 6: Divider
+            oled_set_cursor(0, 6);
+            oled_write_P(PSTR("---------------------"), false);
+
+            // Row 7: Encoder Footer (No newline to prevent scroll)
+            oled_set_cursor(0, 7);
+            oled_write_P(PSTR("E1:ZOOM   E2:JOG/SCRB"), false);
             break;
         }
 
-        // ─── PAGE 2: AUDIO MIXER (8 Rows × 20 Chars) ───
+        // ─── PAGE 2: AUDIO MIXER (4-Channel + VUs) ───
         case _PAGE_AUDIO: {
-            oled_write_P(PSTR(" AUDIO MIX  [P2/4] \n"), false);
+            // Row 0: Inverted Header Banner
+            oled_set_cursor(0, 0);
+            oled_write_P(PSTR(" AUDIO MIXER  [P2/4] "), true);
 
-            oled_write_P(PSTR("C1:"), false);
-            oled_write_P(ch_mute[0] ? PSTR("MUT ") : PSTR("ON  "), false);
-            oled_write_P(PSTR("C2:"), false);
-            oled_write_P(ch_mute[1] ? PSTR("MUT ") : PSTR("ON  "), false);
-            oled_write_P(PSTR("C3:"), false);
-            oled_write_P(ch_mute[2] ? PSTR("MUT\n") : PSTR("ON\n"), false);
+            // Row 1: Channels 1 & 2
+            oled_set_cursor(0, 1);
+            oled_write_P(PSTR("CH1:["), false);
+            oled_write_P(ch_mute[0] ? PSTR("MUT] ") : PSTR("ON ] "), false);
+            oled_write_P(PSTR("CH2:["), false);
+            oled_write_P(ch_mute[1] ? PSTR("MUT] ") : PSTR("ON ] "), false);
 
-            oled_write_P(PSTR("C4:"), false);
-            oled_write_P(ch_mute[3] ? PSTR("MUT ") : PSTR("ON  "), false);
-            oled_write_P(PSTR("STATUS: 4CH-ACTIVE  \n"), false);
+            // Row 2: Channels 3 & 4
+            oled_set_cursor(0, 2);
+            oled_write_P(PSTR("CH3:["), false);
+            oled_write_P(ch_mute[2] ? PSTR("MUT] ") : PSTR("ON ] "), false);
+            oled_write_P(PSTR("CH4:["), false);
+            oled_write_P(ch_mute[3] ? PSTR("MUT] ") : PSTR("ON ] "), false);
 
-            render_vu_bar(PSTR("M-VOL:"), master_vol);
-            render_vu_bar(PSTR("MIC-G:"), mic_gain);
+            // Row 3: Master Volume
+            render_gauge_row(3, PSTR("VOL "), master_vol);
 
-            oled_write_P(PSTR("VU-L: [########..]  \n"), false);
-            oled_write_P(PSTR("ENC1:VOL   ENC2:GAIN\n"), false);
-            oled_write_P(PSTR("E1-CLICK: NEXT PAGE \n"), false);
+            // Row 4: Mic Gain
+            render_gauge_row(4, PSTR("GAIN"), mic_gain);
+
+            // Row 5: VU Master Level
+            oled_set_cursor(0, 5);
+            oled_write_P(PSTR("VU-L [########..] -6dB"), false);
+
+            // Row 6: Divider
+            oled_set_cursor(0, 6);
+            oled_write_P(PSTR("---------------------"), false);
+
+            // Row 7: Encoder Footer
+            oled_set_cursor(0, 7);
+            oled_write_P(PSTR("E1:VOL    E2:MIC-GAIN"), false);
             break;
         }
 
-        // ─── PAGE 3: INSTANT REPLAY (8 Rows × 20 Chars) ───
+        // ─── PAGE 3: INSTANT REPLAY (Broadcast Clip Buffer) ───
         case _PAGE_REPLAY: {
-            oled_write_P(PSTR(" REPLAY UI  [P3/4] \n"), false);
+            // Row 0: Inverted Header Banner
+            oled_set_cursor(0, 0);
+            oled_write_P(PSTR(" INSTANT RPLY [P3/4] "), true);
 
+            // Row 1: Playback Speed
+            oled_set_cursor(0, 1);
             oled_write_P(PSTR("SPEED: [ "), false);
             char spd_str[4];
             itoa(replay_speed, spd_str, 10);
             oled_write(spd_str, false);
-            oled_write_P(PSTR("% ] SLOW \n"), false);
+            oled_write_P(PSTR("% ]  SLOW-MO"), false);
 
-            oled_write_P(PSTR("MARK IN:  00:14:22.1\n"), false);
-            oled_write_P(PSTR("MARK OUT: 00:14:28.4\n"), false);
-            oled_write_P(PSTR("DURATION: 00:00:06.3\n"), false);
-            oled_write_P(PSTR("BUFFER: [SAVED] 100%\n"), false);
-            oled_write_P(PSTR("ENC1:SPEED ENC2:SHUT\n"), false);
-            oled_write_P(PSTR("E1-CLICK: NEXT PAGE \n"), false);
+            // Row 2: In Mark
+            oled_set_cursor(0, 2);
+            oled_write_P(PSTR("MARK IN : 00:14:22.10"), false);
+
+            // Row 3: Out Mark
+            oled_set_cursor(0, 3);
+            oled_write_P(PSTR("MARK OUT: 00:14:28.45"), false);
+
+            // Row 4: Clip Duration
+            oled_set_cursor(0, 4);
+            oled_write_P(PSTR("DURATION: 00:00:06.35"), false);
+
+            // Row 5: Buffer Status
+            oled_set_cursor(0, 5);
+            oled_write_P(PSTR("BUFFER  : [SAVED 100%]"), false);
+
+            // Row 6: Divider
+            oled_set_cursor(0, 6);
+            oled_write_P(PSTR("---------------------"), false);
+
+            // Row 7: Encoder Footer
+            oled_set_cursor(0, 7);
+            oled_write_P(PSTR("E1:SPEED  E2:SHUTTLE "), false);
             break;
         }
 
-        // ─── PAGE 4: RGB SETUP (8 Rows × 20 Chars) ───
+        // ─── PAGE 4: SYSTEM & RGB SETUP ───
         case _PAGE_LIGHTING: {
-            oled_write_P(PSTR(" RGB SETUP  [P4/4] \n"), false);
+            // Row 0: Inverted Header Banner
+            oled_set_cursor(0, 0);
+            oled_write_P(PSTR(" SYSTEM & RGB [P4/4] "), true);
 
-            oled_write_P(PSTR("POWER: ["), false);
+            // Row 1: Power & Tally Mode
+            oled_set_cursor(0, 1);
+            oled_write_P(PSTR("PWR: ["), false);
             oled_write_P(rgblight_is_enabled() ? PSTR("ON ] ") : PSTR("OFF] "), false);
-            oled_write_P(PSTR("TALLY: ["), false);
-            oled_write_P(tally_light_auto ? PSTR("AUTO]\n") : PSTR("MAN ]\n"), false);
+            oled_write_P(PSTR("TALLY:["), false);
+            oled_write_P(tally_light_auto ? PSTR("AUTO]") : PSTR("MAN ]"), false);
 
+            // Row 2: Hue & Saturation
+            oled_set_cursor(0, 2);
             oled_write_P(PSTR("HUE: "), false);
             char h_str[4]; itoa(rgblight_get_hue(), h_str, 10);
             oled_write(h_str, false);
             oled_write_P(PSTR("    SAT: "), false);
             char s_str[4]; itoa(rgblight_get_sat(), s_str, 10);
             oled_write(s_str, false);
-            oled_write_P(PSTR("\n"), false);
 
-            render_vu_bar(PSTR("BRT:  "), (rgblight_get_val() * 100) / 255);
-            oled_write_P(PSTR("ANIM: SOLID / TALLY \n"), false);
-            oled_write_P(PSTR("STATUS: ALL SYS OK  \n"), false);
-            oled_write_P(PSTR("ENC1:BRT    ENC2:HUE\n"), false);
-            oled_write_P(PSTR("E1-CLICK: NEXT PAGE \n"), false);
+            // Row 3: Brightness
+            render_gauge_row(3, PSTR("BRT "), (rgblight_get_val() * 100) / 255);
+
+            // Row 4: Mode
+            oled_set_cursor(0, 4);
+            oled_write_P(PSTR("MODE: SOLID TALLY LINK"), false);
+
+            // Row 5: System Status
+            oled_set_cursor(0, 5);
+            oled_write_P(PSTR("USB : OBS-STUDIO READY"), false);
+
+            // Row 6: Divider
+            oled_set_cursor(0, 6);
+            oled_write_P(PSTR("---------------------"), false);
+
+            // Row 7: Encoder Footer
+            oled_set_cursor(0, 7);
+            oled_write_P(PSTR("E1:BRIGHT E2:HUE/COLOR"), false);
             break;
         }
     }

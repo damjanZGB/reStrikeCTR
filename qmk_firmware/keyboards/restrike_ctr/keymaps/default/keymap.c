@@ -309,97 +309,101 @@ bool oled_task_user(void) {
     uint8_t current_page = get_highest_layer(layer_state);
 
     switch (current_page) {
-        // ─── PAGE 1: OBS BROADCAST (8 Rows) ───
+        // ─── PAGE 1: OBS BROADCAST (8 Rows × 20 Chars) ───
         case _PAGE_BROADCAST: {
-            oled_write_P(PSTR("== BROADCAST [P1/4] ==\n"), false);
+            oled_write_P(PSTR(" BROADCAST  [P1/4] \n"), false);
 
             oled_write_P(PSTR("CAM: [ "), false);
             char cam_str[3];
             itoa(active_camera, cam_str, 10);
             oled_write(cam_str, false);
-            oled_write_P(PSTR(" ]  "), false);
+            oled_write_P(PSTR(" ]      "), false);
 
             if (is_recording) {
                 oled_write_P(PSTR("*REC*\n"), true);
             } else {
-                oled_write_P(PSTR("STBY\n"), false);
+                oled_write_P(PSTR(" STBY\n"), false);
             }
 
             render_vu_bar(PSTR("ZOOM: "), zoom_level);
 
             oled_write_P(PSTR("JOG:  "), false);
-            if (scrub_dir > 0) oled_write_P(PSTR(">> FWD (x2)\n"), false);
-            else if (scrub_dir < 0) oled_write_P(PSTR("<< REV (x2)\n"), false);
-            else oled_write_P(PSTR("-- IDLE\n"), false);
+            if (scrub_dir > 0) oled_write_P(PSTR(">> FWD (x2)  \n"), false);
+            else if (scrub_dir < 0) oled_write_P(PSTR("<< REV (x2)  \n"), false);
+            else oled_write_P(PSTR("-- IDLE      \n"), false);
 
             oled_write_P(PSTR("JOY:  PAN/TILT READY\n"), false);
-            oled_write_P(PSTR("TALLY: [AUTO] RGB CH1\n"), false);
-            oled_write_P(PSTR("ENC1:ZOOM  ENC2:JOG\n"), false);
+            oled_write_P(PSTR("TALLY: AUTO (RGB)   \n"), false);
+            oled_write_P(PSTR("ENC1:ZOOM   ENC2:JOG\n"), false);
+            oled_write_P(PSTR("E1-CLICK: NEXT PAGE \n"), false);
             break;
         }
 
-        // ─── PAGE 2: AUDIO MIXER (8 Rows) ───
+        // ─── PAGE 2: AUDIO MIXER (8 Rows × 20 Chars) ───
         case _PAGE_AUDIO: {
-            oled_write_P(PSTR("== AUDIO MIX [P2/4] ==\n"), false);
+            oled_write_P(PSTR(" AUDIO MIX  [P2/4] \n"), false);
 
             oled_write_P(PSTR("C1:"), false);
             oled_write_P(ch_mute[0] ? PSTR("MUT ") : PSTR("ON  "), false);
             oled_write_P(PSTR("C2:"), false);
-            oled_write_P(ch_mute[1] ? PSTR("MUT\n") : PSTR("ON\n"), false);
-
+            oled_write_P(ch_mute[1] ? PSTR("MUT ") : PSTR("ON  "), false);
             oled_write_P(PSTR("C3:"), false);
-            oled_write_P(ch_mute[2] ? PSTR("MUT ") : PSTR("ON  "), false);
+            oled_write_P(ch_mute[2] ? PSTR("MUT\n") : PSTR("ON\n"), false);
+
             oled_write_P(PSTR("C4:"), false);
-            oled_write_P(ch_mute[3] ? PSTR("MUT\n") : PSTR("ON\n"), false);
+            oled_write_P(ch_mute[3] ? PSTR("MUT ") : PSTR("ON  "), false);
+            oled_write_P(PSTR("STATUS: 4CH-ACTIVE  \n"), false);
 
             render_vu_bar(PSTR("M-VOL:"), master_vol);
             render_vu_bar(PSTR("MIC-G:"), mic_gain);
 
-            oled_write_P(PSTR("STATUS: 4-CH ACTIVE\n"), false);
-            oled_write_P(PSTR("ENC1:M-VOL  ENC2:GAIN\n"), false);
+            oled_write_P(PSTR("VU-L: [########..]  \n"), false);
+            oled_write_P(PSTR("ENC1:VOL   ENC2:GAIN\n"), false);
+            oled_write_P(PSTR("E1-CLICK: NEXT PAGE \n"), false);
             break;
         }
 
-        // ─── PAGE 3: INSTANT REPLAY (8 Rows) ───
+        // ─── PAGE 3: INSTANT REPLAY (8 Rows × 20 Chars) ───
         case _PAGE_REPLAY: {
-            oled_write_P(PSTR("== REPLAY UI [P3/4] ==\n"), false);
+            oled_write_P(PSTR(" REPLAY UI  [P3/4] \n"), false);
 
             oled_write_P(PSTR("SPEED: [ "), false);
             char spd_str[4];
             itoa(replay_speed, spd_str, 10);
             oled_write(spd_str, false);
-            oled_write_P(PSTR("% ] SLOW-MO\n"), false);
+            oled_write_P(PSTR("% ] SLOW \n"), false);
 
-            oled_write_P(PSTR("MARK IN:  00:14:22.10\n"), false);
-            oled_write_P(PSTR("MARK OUT: 00:14:28.45\n"), false);
-            oled_write_P(PSTR("CLIP DUR: 00:00:06.35\n"), false);
+            oled_write_P(PSTR("MARK IN:  00:14:22.1\n"), false);
+            oled_write_P(PSTR("MARK OUT: 00:14:28.4\n"), false);
+            oled_write_P(PSTR("DURATION: 00:00:06.3\n"), false);
             oled_write_P(PSTR("BUFFER: [SAVED] 100%\n"), false);
-            oled_write_P(PSTR("SHUTTLE: FRAME SCRUB\n"), false);
-            oled_write_P(PSTR("ENC1:SPD   ENC2:SHUT\n"), false);
+            oled_write_P(PSTR("ENC1:SPEED ENC2:SHUT\n"), false);
+            oled_write_P(PSTR("E1-CLICK: NEXT PAGE \n"), false);
             break;
         }
 
-        // ─── PAGE 4: RGB SETUP (8 Rows) ───
+        // ─── PAGE 4: RGB SETUP (8 Rows × 20 Chars) ───
         case _PAGE_LIGHTING: {
-            oled_write_P(PSTR("== RGB SETUP [P4/4] ==\n"), false);
+            oled_write_P(PSTR(" RGB SETUP  [P4/4] \n"), false);
 
-            oled_write_P(PSTR("RGB POWER:  [ "), false);
-            oled_write_P(rgblight_is_enabled() ? PSTR("ON  ]\n") : PSTR("OFF ]\n"), false);
-
-            oled_write_P(PSTR("TALLY MODE: [ "), false);
-            oled_write_P(tally_light_auto ? PSTR("AUTO ]\n") : PSTR("MAN  ]\n"), false);
+            oled_write_P(PSTR("POWER: ["), false);
+            oled_write_P(rgblight_is_enabled() ? PSTR("ON ] ") : PSTR("OFF] "), false);
+            oled_write_P(PSTR("TALLY: ["), false);
+            oled_write_P(tally_light_auto ? PSTR("AUTO]\n") : PSTR("MAN ]\n"), false);
 
             oled_write_P(PSTR("HUE: "), false);
             char h_str[4]; itoa(rgblight_get_hue(), h_str, 10);
             oled_write(h_str, false);
-            oled_write_P(PSTR("  SAT: "), false);
+            oled_write_P(PSTR("    SAT: "), false);
             char s_str[4]; itoa(rgblight_get_sat(), s_str, 10);
             oled_write(s_str, false);
             oled_write_P(PSTR("\n"), false);
 
             render_vu_bar(PSTR("BRT:  "), (rgblight_get_val() * 100) / 255);
-            oled_write_P(PSTR("ANIM: SOLID / TALLY\n"), false);
-            oled_write_P(PSTR("ENC1:BRT   ENC2:HUE\n"), false);
+            oled_write_P(PSTR("ANIM: SOLID / TALLY \n"), false);
+            oled_write_P(PSTR("STATUS: ALL SYS OK  \n"), false);
+            oled_write_P(PSTR("ENC1:BRT    ENC2:HUE\n"), false);
+            oled_write_P(PSTR("E1-CLICK: NEXT PAGE \n"), false);
             break;
         }
     }

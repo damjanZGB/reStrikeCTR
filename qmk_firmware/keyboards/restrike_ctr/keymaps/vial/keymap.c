@@ -406,41 +406,43 @@ bool oled_task_user(void) {
             oled_write_P(PSTR("  RE-STRIKE STUDIO  "), false);
 
             oled_set_cursor(0, 2);
-            oled_write_P(PSTR(" CAMERA: [ "), false);
+            oled_write_P(PSTR("   CAMERA: [ "), false);
             char cam_str[3];
             itoa(active_camera, cam_str, 10);
             oled_write(cam_str, false);
-            oled_write_P(PSTR(" ]  "), false);
-            if (is_recording && is_streaming) {
-                oled_write_P(PSTR("REC+LIVE"), true);
-            } else if (is_recording) {
-                oled_write_P(PSTR(" *REC*  "), true);
-            } else if (is_streaming) {
-                oled_write_P(PSTR("  LIVE  "), false);
-            } else {
-                oled_write_P(PSTR("  STBY  "), false);
-            }
+            oled_write_P(PSTR(" ]     "), false);
 
             oled_set_cursor(0, 3);
-            oled_write_P(PSTR(" ZOOM LEVEL:  "), false);
+            if (is_recording && is_streaming) {
+                oled_write_P(PSTR("  STATUS: REC+LIVE  "), true);
+            } else if (is_recording) {
+                oled_write_P(PSTR("   STATUS: *REC*    "), true);
+            } else if (is_streaming) {
+                oled_write_P(PSTR("   STATUS: LIVE     "), false);
+            } else {
+                oled_write_P(PSTR("   STATUS: STBY     "), false);
+            }
+
+            oled_set_cursor(0, 4);
+            oled_write_P(PSTR("   ZOOM  : "), false);
             char zm_str[4];
             itoa(zoom_level, zm_str, 10);
             if (zoom_level < 10) oled_write_P(PSTR("  "), false);
             else if (zoom_level < 100) oled_write_P(PSTR(" "), false);
             oled_write(zm_str, false);
-            oled_write_P(PSTR("%"), false);
-
-            oled_set_cursor(0, 4);
-            oled_write_P(PSTR(" JOG SCRUB :  "), false);
-            if (scrub_dir > 0) oled_write_P(PSTR("FWD 2x"), false);
-            else if (scrub_dir < 0) oled_write_P(PSTR("REV 2x"), false);
-            else oled_write_P(PSTR("IDLE  "), false);
+            oled_write_P(PSTR("%     "), false);
 
             oled_set_cursor(0, 5);
-            oled_write_P(PSTR(" TALLY MODE:  AUTO  "), false);
+            if (scrub_dir > 0) {
+                oled_write_P(PSTR("   JOG   : FWD 2x   "), false);
+            } else if (scrub_dir < 0) {
+                oled_write_P(PSTR("   JOG   : REV 2x   "), false);
+            } else {
+                oled_write_P(PSTR("   JOG   : IDLE     "), false);
+            }
 
             oled_set_cursor(0, 7);
-            oled_write_P(PSTR("E1: ZOOM    E2: JOG "), false);
+            oled_write_P(PSTR(" E1: ZOOM   E2: JOG "), false);
             break;
         }
 
@@ -450,31 +452,31 @@ bool oled_task_user(void) {
             oled_write_P(PSTR("    AUDIO MIXER     "), false);
 
             oled_set_cursor(0, 2);
-            oled_write_P(PSTR(" CHANNELS: 1-4 ACTIVE"), false);
+            oled_write_P(PSTR("   INPUTS: 1-4 ON   "), false);
 
             oled_set_cursor(0, 3);
-            oled_write_P(PSTR(" MASTER VOL:  "), false);
+            oled_write_P(PSTR("   MASTER: "), false);
             char v_str[4];
             itoa(master_vol, v_str, 10);
             if (master_vol < 10) oled_write_P(PSTR("  "), false);
             else if (master_vol < 100) oled_write_P(PSTR(" "), false);
             oled_write(v_str, false);
-            oled_write_P(PSTR("%"), false);
+            oled_write_P(PSTR("%     "), false);
 
             oled_set_cursor(0, 4);
-            oled_write_P(PSTR(" MIC GAIN  :  "), false);
+            oled_write_P(PSTR("   MIC   : "), false);
             char g_str[4];
             itoa(mic_gain, g_str, 10);
             if (mic_gain < 10) oled_write_P(PSTR("  "), false);
             else if (mic_gain < 100) oled_write_P(PSTR(" "), false);
             oled_write(g_str, false);
-            oled_write_P(PSTR("%"), false);
+            oled_write_P(PSTR("%     "), false);
 
             oled_set_cursor(0, 5);
-            oled_write_P(PSTR(" PEAK LEVEL:  -6 dB "), false);
+            oled_write_P(PSTR("   PEAK  : -6 dB    "), false);
 
             oled_set_cursor(0, 7);
-            oled_write_P(PSTR("E1: VOL     E2: GAIN"), false);
+            oled_write_P(PSTR(" E1: VOL    E2: GAIN"), false);
             break;
         }
 
@@ -484,25 +486,25 @@ bool oled_task_user(void) {
             oled_write_P(PSTR("   INSTANT REPLAY   "), false);
 
             oled_set_cursor(0, 2);
-            oled_write_P(PSTR(" REPLAY SPD:  "), false);
+            oled_write_P(PSTR("   SPEED : "), false);
             char spd_str[4];
             itoa(replay_speed, spd_str, 10);
             if (replay_speed < 10) oled_write_P(PSTR("  "), false);
             else if (replay_speed < 100) oled_write_P(PSTR(" "), false);
             oled_write(spd_str, false);
-            oled_write_P(PSTR("%"), false);
+            oled_write_P(PSTR("%     "), false);
 
             oled_set_cursor(0, 3);
-            oled_write_P(PSTR(" BUFFER    :  READY "), false);
+            oled_write_P(PSTR("   BUFFER: READY    "), false);
 
             oled_set_cursor(0, 4);
-            oled_write_P(PSTR(" CLIP MARK :  SAVED "), false);
+            oled_write_P(PSTR("   MARK  : SAVED    "), false);
 
             oled_set_cursor(0, 5);
-            oled_write_P(PSTR(" DURATION  : 00:06s "), false);
+            oled_write_P(PSTR("   CLIP  : 00:06s   "), false);
 
             oled_set_cursor(0, 7);
-            oled_write_P(PSTR("E1: SPEED   E2: SHUT"), false);
+            oled_write_P(PSTR(" E1: SPEED  E2: SHUT"), false);
             break;
         }
 
@@ -512,28 +514,28 @@ bool oled_task_user(void) {
             oled_write_P(PSTR("    SYSTEM SETUP    "), false);
 
             oled_set_cursor(0, 2);
-            oled_write_P(PSTR(" RGB LIGHTS:  "), false);
-            oled_write_P(rgblight_is_enabled() ? PSTR("ON    ") : PSTR("OFF   "), false);
+            oled_write_P(PSTR("   LIGHTS: "), false);
+            oled_write_P(rgblight_is_enabled() ? PSTR("ON       ") : PSTR("OFF      "), false);
 
             oled_set_cursor(0, 3);
-            oled_write_P(PSTR(" TALLY LINK:  "), false);
-            oled_write_P(tally_light_auto ? PSTR("AUTO  ") : PSTR("MANUAL"), false);
+            oled_write_P(PSTR("   TALLY : "), false);
+            oled_write_P(tally_light_auto ? PSTR("AUTO     ") : PSTR("MANUAL   "), false);
 
             oled_set_cursor(0, 4);
-            oled_write_P(PSTR(" BRIGHTNESS:  "), false);
+            oled_write_P(PSTR("   BRIGHT: "), false);
             uint8_t brt = (rgblight_get_val() * 100) / 255;
             char b_str[4];
             itoa(brt, b_str, 10);
             if (brt < 10) oled_write_P(PSTR("  "), false);
             else if (brt < 100) oled_write_P(PSTR(" "), false);
             oled_write(b_str, false);
-            oled_write_P(PSTR("%"), false);
+            oled_write_P(PSTR("%     "), false);
 
             oled_set_cursor(0, 5);
-            oled_write_P(PSTR(" USB STATUS:  READY "), false);
+            oled_write_P(PSTR("   STATUS: READY    "), false);
 
             oled_set_cursor(0, 7);
-            oled_write_P(PSTR("E1: BRIGHT  E2: HUE "), false);
+            oled_write_P(PSTR(" E1: BRT    E2: HUE "), false);
             break;
         }
     }

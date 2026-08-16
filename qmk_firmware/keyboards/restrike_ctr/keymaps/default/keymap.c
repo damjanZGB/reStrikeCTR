@@ -178,23 +178,32 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
 
 // â”€â”€â”€ Key Matrix Index Lookup (for upstream event reporting) â”€â”€â”€
 // Maps custom keycodes to a sequential key index 0..9
-static uint8_t keycode_to_key_idx(uint16_t keycode) {
-    switch (keycode) {
-        case CAM_1:         return 0; // [0,0] Top-Left
-        case CAM_2:         return 1; // [0,1] Top-Mid
-        case KC_F17:        return 2; // [0,2] Top-Right 1
-        case KC_F18:        return 3; // [1,2] Top-Right 2
-        case CAM_3:         return 4; // [1,0] 2nd Row Left
-        case CAM_4:         return 5; // [1,1] 2nd Row Mid
-        case KC_MPLY:       return 6; // [0,3] Play/Pause
-        case REC_TOGGLE:    return 7; // [1,3] Start/Stop
-        case PAGE_CYCLE:    return 8; // [0,4] Zoom Click
-        case KC_MUTE:       return 9; // [1,4] Shuffle Click
-        default:            return 0xFF;
-    }
+// ─── Key Matrix Index Lookup (Physical Hardware Mapping) ───
+// Maps matrix [row, col] to 0-indexed key ID (0..9) matching OBS key positions 1..10:
+// 0: CAM1 (Row 0, Col 0) -> Key 1
+// 1: CAM2 (Row 0, Col 1) -> Key 2
+// 2: SCORE (Row 0, Col 2) -> Key 3
+// 3: IVR (Row 1, Col 2) -> Key 4
+// 4: CAM3 (Row 1, Col 0) -> Key 5
+// 5: CAM4 (Row 1, Col 1) -> Key 6
+// 6: PLAY (Row 0, Col 3) -> Key 7
+// 7: REC (Row 1, Col 3) -> Key 8
+// 8: E1_ZOOM Click (Row 0, Col 4) -> Key 9
+// 9: E2_JOG Click (Row 1, Col 4) -> Key 10
+static inline uint8_t matrix_to_key_idx(uint8_t row, uint8_t col) {
+    if (row == 0 && col == 0) return 0; // Key 1: CAM1
+    if (row == 0 && col == 1) return 1; // Key 2: CAM2
+    if (row == 0 && col == 2) return 2; // Key 3: SCORE
+    if (row == 1 && col == 2) return 3; // Key 4: IVR
+    if (row == 1 && col == 0) return 4; // Key 5: CAM3
+    if (row == 1 && col == 1) return 5; // Key 6: CAM4
+    if (row == 0 && col == 3) return 6; // Key 7: PLAY
+    if (row == 1 && col == 3) return 7; // Key 8: REC
+    if (row == 0 && col == 4) return 8; // Key 9: E1_ZOOM
+    if (row == 1 && col == 4) return 9; // Key 10: E2_JOG
+    return 0xFF;
 }
 
-// â”€â”€â”€ Keymaps for 4 Pages â”€â”€â”€
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_PAGE_BROADCAST] = LAYOUT(
         CAM_1,       CAM_2,       KC_F17,      KC_F18,
@@ -234,6 +243,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         restrike_send_key_event(idx, record->event.pressed);
     }
     #endif
+
+    // When OBS is connected, OBS is the master controller for all keys and actions!
+    // Suppress local layer switches, page cycling, and conflicting keyboard shortcuts.
+    if (obs_connected) {
+        return false;
+    }
 
     if (record->event.pressed) {
         switch (keycode) {
@@ -328,6 +343,7 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
     #ifdef RAW_ENABLE
     if (obs_connected) {
         restrike_send_encoder_event(index, clockwise ? 1 : -1, 1);
+        return false;
     }
     #endif
 
@@ -574,7 +590,7 @@ void housekeeping_task_user(void) {
         // E1   = LED8 (index 6), E2   = LED11 (index 7)
         // PLAY = LED3 (index 8), REC  = LED6 (index 9)
         // EXT1 = LED9 (index 10), EXT2 = LED12 (index 11)
-        static const uint8_t cam_led_map[4] = { 0, 1, 4, 5 };
+        static const uint8_t cam_led_map[4] = { 0, 3, 1, 4 };
 
         for (uint8_t i = 0; i < 4; i++) {
             uint8_t lidx = cam_led_map[i];

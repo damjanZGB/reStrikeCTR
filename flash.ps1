@@ -16,7 +16,7 @@ Write-Host "==========================================================" -Foregro
 Write-Host ""
 Write-Host "Target HEX: $HexFile" -ForegroundColor Yellow
 Write-Host "Waiting for Pro Micro bootloader COM port..." -ForegroundColor Yellow
-Write-Host "👉 PLEASE DOUBLE-TAP 'RST' TO 'GND' ON THE BOARD NOW 👈" -ForegroundColor Green
+Write-Host ">> PLEASE DOUBLE-TAP 'RST' TO 'GND' ON THE BOARD NOW <<" -ForegroundColor Green
 Write-Host ""
 
 $knownPorts = [System.IO.Ports.SerialPort]::GetPortNames()
@@ -32,18 +32,31 @@ while ($null -eq $foundPort) {
             break
         }
     }
-    Start-Sleep -Milliseconds 100
+    Start-Sleep -Milliseconds 50
     if ((Get-Date) - $startTime -gt (New-TimeSpan -Minutes 2)) {
         Write-Warning "Timed out waiting for new COM port."
         exit 1
     }
 }
 
-Write-Host "Detected bootloader on $foundPort! Waiting 400ms for driver settle..." -ForegroundColor Cyan
-Start-Sleep -Milliseconds 400
+Write-Host "Detected bootloader on $foundPort! Connecting avrdude..." -ForegroundColor Cyan
 
-Write-Host "Flashing with avr109 @ 57600 baud..." -ForegroundColor Green
-& $avrdude -C $conf -p atmega32u4 -c avr109 -b 57600 -P $foundPort -U "flash:w:${HexFile}:i"
+# Retry avrdude for up to 3 attempts with 200ms backoff
+$flashed = $false
+for ($attempt = 1; $attempt -le 4; $attempt++) {
+    Start-Sleep -Milliseconds 250
+    Write-Host "Flashing attempt $attempt on $foundPort..." -ForegroundColor Green
+    & $avrdude -C $conf -p atmega32u4 -c avr109 -b 57600 -P $foundPort -U "flash:w:${HexFile}:i"
+    if ($LASTEXITCODE -eq 0) {
+        $flashed = $true
+        break
+    }
+}
 
-Write-Host ""
-Write-Host "Done!" -ForegroundColor Cyan
+if ($flashed) {
+    Write-Host ""
+    Write-Host "SUCCESS: Controller flashed and verified!" -ForegroundColor Green
+} else {
+    Write-Host ""
+    Write-Warning "Flashing failed on $foundPort."
+}

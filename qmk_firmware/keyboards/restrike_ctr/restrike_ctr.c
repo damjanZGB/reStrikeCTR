@@ -144,7 +144,15 @@ void housekeeping_task_kb(void) {
         // Read ADC channels
         joy_x_val     = analogReadPin(JOYSTICK_HORIZ_PIN);
         joy_y_val     = analogReadPin(JOYSTICK_VERT_PIN);
-        joy_btn_state = !gpio_read_pin(JOYSTICK_SW_PIN); // Active LOW
+        bool new_joy_btn = !gpio_read_pin(JOYSTICK_SW_PIN); // Active LOW
+        if (new_joy_btn != joy_btn_state) {
+            joy_btn_state = new_joy_btn;
+            #ifdef RAW_ENABLE
+            if (obs_connected) {
+                restrike_send_key_event(10, joy_btn_state); // Key 11: JOY_BTN
+            }
+            #endif
+        }
     }
 
     #ifdef RAW_ENABLE

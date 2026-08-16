@@ -25,6 +25,8 @@
 #ifndef F_SCL
 #    define F_SCL 100000UL
 #endif
+#define OLED_UPDATE_PROCESS_LIMIT 16
+#define OLED_UPDATE_INTERVAL 20
 #define OLED_TIMEOUT 60000
 #define OLED_BRIGHTNESS 255
 

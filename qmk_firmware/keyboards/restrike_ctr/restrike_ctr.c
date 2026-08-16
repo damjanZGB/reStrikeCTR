@@ -101,6 +101,9 @@ void restrike_send_joystick_state(int16_t x, int16_t y, bool btn) {
 // ─── Board Initialization ───
 
 void keyboard_pre_init_kb(void) {
+    // Allow OLED charge pump and power rail to stabilize on cold USB plug-in
+    wait_ms(150);
+
     // Initialize Signal LED pin
     gpio_set_pin_output(SIG_LED_PIN);
     gpio_write_pin_low(SIG_LED_PIN);

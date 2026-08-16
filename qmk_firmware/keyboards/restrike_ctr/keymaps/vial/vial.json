@@ -13,8 +13,8 @@
       "pad_b": "B1"
     },
     {
-      "pad_a": "B3",
-      "pad_b": "B2"
+      "pad_a": "B2",
+      "pad_b": "B3"
     }
   ],
   "customKeycodes": [

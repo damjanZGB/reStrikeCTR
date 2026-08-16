@@ -49,44 +49,50 @@ static uint8_t  replay_speed     = 100;  // 25, 50, 75, 100%
 static bool     ch_mute[4]       = {false, false, false, false};
 static bool     tally_light_auto = true;
 
-// Keymaps for 4 Pages
+#ifdef RAW_ENABLE
+__attribute__((unused)) static uint8_t keycode_to_key_idx(uint16_t keycode) {
+    switch (keycode) {
+        case CAM_1:         return 0; // [0,0] Top-Left
+        case CAM_2:         return 1; // [0,1] Top-Mid
+        case KC_F17:        return 2; // [0,2] Top-Right 1
+        case KC_F18:        return 3; // [1,2] Top-Right 2
+        case CAM_3:         return 4; // [1,0] 2nd Row Left
+        case CAM_4:         return 5; // [1,1] 2nd Row Mid
+        case KC_MPLY:       return 6; // [0,3] Play/Pause
+        case REC_TOGGLE:    return 7; // [1,3] Start/Stop
+        case PAGE_CYCLE:    return 8; // [0,4] Zoom Click
+        case KC_MUTE:       return 9; // [1,4] Shuffle Click
+        default:            return 0xFF;
+    }
+}
+#endif
+
+// ─── Keymaps for 4 Pages ───
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
-    /* -------------------------------------------------------------
-     * PAGE 1: OBS / BROADCAST STUDIO
-     * ------------------------------------------------------------- */
     [_PAGE_BROADCAST] = LAYOUT(
-        CAM_1,       CAM_2,       CAM_3,       CAM_4,
-        KC_F17,      KC_F18,
+        CAM_1,       CAM_2,       KC_F17,      KC_F18,
+        CAM_3,       CAM_4,
         KC_MPLY,     REC_TOGGLE,
         PAGE_CYCLE,  KC_MUTE
     ),
 
-    /* -------------------------------------------------------------
-     * PAGE 2: AUDIO MIXER
-     * ------------------------------------------------------------- */
     [_PAGE_AUDIO] = LAYOUT(
-        AUD_MUTE_CH1, AUD_MUTE_CH2, AUD_MUTE_CH3, AUD_MUTE_CH4,
-        KC_F20,       KC_F21,
+        AUD_MUTE_CH1, AUD_MUTE_CH2, KC_F20,       KC_F21,
+        AUD_MUTE_CH3, AUD_MUTE_CH4,
         KC_MUTE,      KC_F22,
         PAGE_CYCLE,   KC_F23
     ),
 
-    /* -------------------------------------------------------------
-     * PAGE 3: INSTANT REPLAY & TIMELINE JOG
-     * ------------------------------------------------------------- */
     [_PAGE_REPLAY] = LAYOUT(
-        SPEED_25,    SPEED_50,    SPEED_75,    SPEED_100,
-        MARK_IN,     MARK_OUT,
+        SPEED_25,    SPEED_50,    MARK_IN,     MARK_OUT,
+        SPEED_75,    SPEED_100,
         KC_SPACE,    SAVE_REPLAY,
         PAGE_CYCLE,  KC_HOME
     ),
 
-    /* -------------------------------------------------------------
-     * PAGE 4: ARGB HARDWARE LIGHTING & SYSTEM
-     * ------------------------------------------------------------- */
     [_PAGE_LIGHTING] = LAYOUT(
-        UG_TOGG,     UG_NEXT,     UG_PREV,     RGB_TALLY_TOGGLE,
-        UG_HUEU,     UG_HUED,
+        UG_TOGG,     UG_NEXT,     UG_HUEU,     UG_HUED,
+        UG_PREV,     RGB_TALLY_TOGGLE,
         UG_SATU,     UG_SATD,
         PAGE_CYCLE,  RGB_M_P
     )
@@ -297,125 +303,136 @@ bool oled_task_user(void) {
     uint8_t current_page = get_highest_layer(layer_state);
 
     switch (current_page) {
-        // ─── PAGE 1: BROADCAST HUD (Minimalist Studio) ───
+        // ─── PAGE 1: BROADCAST HUD ───
         case _PAGE_BROADCAST: {
             oled_set_cursor(0, 0);
             oled_write_P(PSTR("  RE-STRIKE STUDIO  "), false);
 
             oled_set_cursor(0, 2);
-            oled_write_P(PSTR("    CAMERA : [ "), false);
+            oled_write_P(PSTR(" CAMERA: [ "), false);
             char cam_str[3];
             itoa(active_camera, cam_str, 10);
             oled_write(cam_str, false);
-            oled_write_P(PSTR(" ]"), false);
-
-            oled_set_cursor(0, 3);
-            oled_write_P(PSTR("    STATE  : "), false);
+            oled_write_P(PSTR(" ]  "), false);
             if (is_recording) {
-                oled_write_P(PSTR("*REC*"), true);
+                oled_write_P(PSTR(" *REC*  "), true);
             } else {
-                oled_write_P(PSTR("STBY"), false);
+                oled_write_P(PSTR("  STBY  "), false);
             }
 
-            oled_set_cursor(0, 4);
-            oled_write_P(PSTR("    ZOOM   : "), false);
+            oled_set_cursor(0, 3);
+            oled_write_P(PSTR(" ZOOM LEVEL:  "), false);
             char zm_str[4];
             itoa(zoom_level, zm_str, 10);
+            if (zoom_level < 10) oled_write_P(PSTR("  "), false);
+            else if (zoom_level < 100) oled_write_P(PSTR(" "), false);
             oled_write(zm_str, false);
             oled_write_P(PSTR("%"), false);
 
-            oled_set_cursor(0, 5);
-            oled_write_P(PSTR("    JOG    : "), false);
+            oled_set_cursor(0, 4);
+            oled_write_P(PSTR(" JOG SCRUB :  "), false);
             if (scrub_dir > 0) oled_write_P(PSTR("FWD 2x"), false);
             else if (scrub_dir < 0) oled_write_P(PSTR("REV 2x"), false);
-            else oled_write_P(PSTR("IDLE"), false);
+            else oled_write_P(PSTR("IDLE  "), false);
+
+            oled_set_cursor(0, 5);
+            oled_write_P(PSTR(" TALLY MODE:  AUTO  "), false);
 
             oled_set_cursor(0, 7);
-            oled_write_P(PSTR("  E1:ZOOM   E2:JOG  "), false);
+            oled_write_P(PSTR("E1: ZOOM    E2: JOG "), false);
             break;
         }
 
         // ─── PAGE 2: AUDIO MIXER ───
         case _PAGE_AUDIO: {
             oled_set_cursor(0, 0);
-            oled_write_P(PSTR("     AUDIO MIX      "), false);
+            oled_write_P(PSTR("    AUDIO MIXER     "), false);
 
             oled_set_cursor(0, 2);
-            oled_write_P(PSTR("    CH 1-4 : ACTIVE "), false);
+            oled_write_P(PSTR(" CHANNELS: 1-4 ACTIVE"), false);
 
             oled_set_cursor(0, 3);
-            oled_write_P(PSTR("    MASTER : "), false);
+            oled_write_P(PSTR(" MASTER VOL:  "), false);
             char v_str[4];
             itoa(master_vol, v_str, 10);
+            if (master_vol < 10) oled_write_P(PSTR("  "), false);
+            else if (master_vol < 100) oled_write_P(PSTR(" "), false);
             oled_write(v_str, false);
             oled_write_P(PSTR("%"), false);
 
             oled_set_cursor(0, 4);
-            oled_write_P(PSTR("    MIC    : "), false);
+            oled_write_P(PSTR(" MIC GAIN  :  "), false);
             char g_str[4];
             itoa(mic_gain, g_str, 10);
+            if (mic_gain < 10) oled_write_P(PSTR("  "), false);
+            else if (mic_gain < 100) oled_write_P(PSTR(" "), false);
             oled_write(g_str, false);
             oled_write_P(PSTR("%"), false);
 
             oled_set_cursor(0, 5);
-            oled_write_P(PSTR("    VU     : -6 dB  "), false);
+            oled_write_P(PSTR(" PEAK LEVEL:  -6 dB "), false);
 
             oled_set_cursor(0, 7);
-            oled_write_P(PSTR("  E1:VOL    E2:MIC  "), false);
+            oled_write_P(PSTR("E1: VOL     E2: GAIN"), false);
             break;
         }
 
         // ─── PAGE 3: INSTANT REPLAY ───
         case _PAGE_REPLAY: {
             oled_set_cursor(0, 0);
-            oled_write_P(PSTR("    INSTANT REPLAY  "), false);
+            oled_write_P(PSTR("   INSTANT REPLAY   "), false);
 
             oled_set_cursor(0, 2);
-            oled_write_P(PSTR("    SPEED  : "), false);
+            oled_write_P(PSTR(" REPLAY SPD:  "), false);
             char spd_str[4];
             itoa(replay_speed, spd_str, 10);
+            if (replay_speed < 10) oled_write_P(PSTR("  "), false);
+            else if (replay_speed < 100) oled_write_P(PSTR(" "), false);
             oled_write(spd_str, false);
             oled_write_P(PSTR("%"), false);
 
             oled_set_cursor(0, 3);
-            oled_write_P(PSTR("    BUFFER : READY  "), false);
+            oled_write_P(PSTR(" BUFFER    :  READY "), false);
 
             oled_set_cursor(0, 4);
-            oled_write_P(PSTR("    MARK   : SAVED  "), false);
+            oled_write_P(PSTR(" CLIP MARK :  SAVED "), false);
 
             oled_set_cursor(0, 5);
-            oled_write_P(PSTR("    CLIP   : 00:06s "), false);
+            oled_write_P(PSTR(" DURATION  : 00:06s "), false);
 
             oled_set_cursor(0, 7);
-            oled_write_P(PSTR("  E1:SPEED  E2:SHUT "), false);
+            oled_write_P(PSTR("E1: SPEED   E2: SHUT"), false);
             break;
         }
 
         // ─── PAGE 4: LIGHTING & RGB ───
         case _PAGE_LIGHTING: {
             oled_set_cursor(0, 0);
-            oled_write_P(PSTR("     RGB SETUP      "), false);
+            oled_write_P(PSTR("    SYSTEM SETUP    "), false);
 
             oled_set_cursor(0, 2);
-            oled_write_P(PSTR("    LIGHTS : "), false);
-            oled_write_P(rgblight_is_enabled() ? PSTR("ON") : PSTR("OFF"), false);
+            oled_write_P(PSTR(" RGB LIGHTS:  "), false);
+            oled_write_P(rgblight_is_enabled() ? PSTR("ON    ") : PSTR("OFF   "), false);
 
             oled_set_cursor(0, 3);
-            oled_write_P(PSTR("    TALLY  : "), false);
-            oled_write_P(tally_light_auto ? PSTR("AUTO") : PSTR("MANUAL"), false);
+            oled_write_P(PSTR(" TALLY LINK:  "), false);
+            oled_write_P(tally_light_auto ? PSTR("AUTO  ") : PSTR("MANUAL"), false);
 
             oled_set_cursor(0, 4);
-            oled_write_P(PSTR("    BRIGHT : "), false);
+            oled_write_P(PSTR(" BRIGHTNESS:  "), false);
+            uint8_t brt = (rgblight_get_val() * 100) / 255;
             char b_str[4];
-            itoa((rgblight_get_val() * 100) / 255, b_str, 10);
+            itoa(brt, b_str, 10);
+            if (brt < 10) oled_write_P(PSTR("  "), false);
+            else if (brt < 100) oled_write_P(PSTR(" "), false);
             oled_write(b_str, false);
             oled_write_P(PSTR("%"), false);
 
             oled_set_cursor(0, 5);
-            oled_write_P(PSTR("    STATUS : READY  "), false);
+            oled_write_P(PSTR(" USB STATUS:  READY "), false);
 
             oled_set_cursor(0, 7);
-            oled_write_P(PSTR("  E1:BRT    E2:HUE  "), false);
+            oled_write_P(PSTR("E1: BRIGHT  E2: HUE "), false);
             break;
         }
     }

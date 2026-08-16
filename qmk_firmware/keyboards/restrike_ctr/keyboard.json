@@ -21,7 +21,7 @@
     "encoder": {
         "rotary": [
             {"pin_a": "F7", "pin_b": "B1", "resolution": 4},
-            {"pin_a": "B3", "pin_b": "B2", "resolution": 4}
+            {"pin_a": "B2", "pin_b": "B3", "resolution": 4}
         ]
     },
     "ws2812": {
@@ -52,11 +52,11 @@
             "layout": [
                 {"matrix": [0, 0], "x": 3, "y": 0, "label": "CAM1"},
                 {"matrix": [0, 1], "x": 4.5, "y": 0, "label": "CAM2"},
-                {"matrix": [0, 2], "x": 6, "y": 0, "label": "CAM3"},
-                {"matrix": [1, 2], "x": 7.5, "y": 0, "label": "CAM4"},
+                {"matrix": [0, 2], "x": 6, "y": 0, "label": "AUX1"},
+                {"matrix": [1, 2], "x": 7.5, "y": 0, "label": "AUX2"},
 
-                {"matrix": [1, 0], "x": 3, "y": 1.5, "label": "AUX1"},
-                {"matrix": [1, 1], "x": 4.5, "y": 1.5, "label": "AUX2"},
+                {"matrix": [1, 0], "x": 3, "y": 1.5, "label": "CAM3"},
+                {"matrix": [1, 1], "x": 4.5, "y": 1.5, "label": "CAM4"},
 
                 {"matrix": [0, 3], "x": 4, "y": 3.5, "w": 1.5, "label": "PLAY_PAUSE"},
                 {"matrix": [1, 3], "x": 7, "y": 3.5, "w": 1.5, "label": "START_STOP"},

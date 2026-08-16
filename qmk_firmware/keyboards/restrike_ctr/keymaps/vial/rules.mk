@@ -1,0 +1,12 @@
+# Vial-enabled rules.mk
+VIA_ENABLE = yes
+VIAL_ENABLE = yes
+VIALRGB_ENABLE = yes
+QMK_SETTINGS = yes
+
+OLED_ENABLE = yes
+RGBLIGHT_ENABLE = yes
+ENCODER_ENABLE = yes
+EXTRAKEY_ENABLE = yes
+MOUSEKEY_ENABLE = yes
+LTO_ENABLE = yes

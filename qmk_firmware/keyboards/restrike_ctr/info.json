@@ -1,0 +1,62 @@
+{
+    "keyboard_name": "ReStrike Camera Controller",
+    "url": "https://restrike.io",
+    "maintainer": "ReStrike",
+    "width": 14,
+    "height": 7,
+    "debounce": 5,
+    "usb": {
+        "vid": "0xFEED",
+        "pid": "0x6060",
+        "device_version": "1.0.0"
+    },
+    "processor": "atmega32u4",
+    "bootloader": "caterina",
+    "matrix_pins": {
+        "cols": ["D4", "C6", "D7", "E6", "B4"],
+        "rows": ["B5", "F6"],
+        "diode_direction": "COL2ROW"
+    },
+    "encoder": {
+        "rotary": [
+            {"pin_a": "F7", "pin_b": "B1", "resolution": 4},
+            {"pin_a": "B3", "pin_b": "B2", "resolution": 4}
+        ]
+    },
+    "rgblight": {
+        "pin": "B6",
+        "num_leds": 12,
+        "max_brightness": 200,
+        "animations": {
+            "breathing": true,
+            "rainbow_mood": true,
+            "rainbow_swirl": true,
+            "snake": true,
+            "knight": true,
+            "christmas": false,
+            "static_gradient": true,
+            "rgb_test": true,
+            "alternating": true,
+            "twinkle": true
+        }
+    },
+    "layouts": {
+        "LAYOUT": {
+            "layout": [
+                {"matrix": [0, 0], "x": 3, "y": 0, "label": "CAM1"},
+                {"matrix": [0, 1], "x": 4.5, "y": 0, "label": "CAM2"},
+                {"matrix": [0, 2], "x": 6, "y": 0, "label": "CAM3"},
+                {"matrix": [1, 2], "x": 7.5, "y": 0, "label": "CAM4"},
+
+                {"matrix": [1, 0], "x": 3, "y": 1.5, "label": "AUX1"},
+                {"matrix": [1, 1], "x": 4.5, "y": 1.5, "label": "AUX2"},
+
+                {"matrix": [0, 3], "x": 4, "y": 3.5, "w": 1.5, "label": "PLAY_PAUSE"},
+                {"matrix": [1, 3], "x": 7, "y": 3.5, "w": 1.5, "label": "START_STOP"},
+
+                {"matrix": [0, 4], "x": 1, "y": 3.5, "label": "ZOOM_SW"},
+                {"matrix": [1, 4], "x": 10.5, "y": 1, "label": "SHUFFLE_SW"}
+            ]
+        }
+    }
+}

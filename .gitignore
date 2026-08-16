@@ -1,0 +1,27 @@
+# OS generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Build artifacts
+*.hex
+*.bin
+*.uf2
+*.elf
+*.map
+*.lst
+*.o
+*.d
+
+# QMK build directory
+.build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Antigravity agent artifacts
+.gemini/

@@ -1,0 +1,5 @@
+# Default Keymap Rules
+OLED_ENABLE = yes
+RGBLIGHT_ENABLE = yes
+ENCODER_ENABLE = yes
+EXTRAKEY_ENABLE = yes

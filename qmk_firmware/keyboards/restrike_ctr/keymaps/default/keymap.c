@@ -95,10 +95,11 @@ static bool handle_restrike_raw_hid(uint8_t *data, uint8_t length) {
             stream_health = data[1];
             return true;
 
-        case CMD_SET_TALLY_COLOR:
+                case CMD_SET_TALLY_COLOR:
             // Direct per-LED color override from OBS
             #ifdef RGBLIGHT_ENABLE
             {
+                obs_led_override = true;
                 uint8_t led_idx = data[1];
                 if (led_idx < RESTRIKE_CTR_NUM_LEDS) {
                     rgblight_setrgb_at(data[2], data[3], data[4], led_idx);
@@ -106,6 +107,7 @@ static bool handle_restrike_raw_hid(uint8_t *data, uint8_t length) {
             }
             #endif
             return true;
+
 
         case CMD_SET_OLED_LINE:
             // OBS pushes custom text to a specific OLED line
@@ -119,11 +121,19 @@ static bool handle_restrike_raw_hid(uint8_t *data, uint8_t length) {
             }
             return true;
 
-        case CMD_SET_LED_BRIGHTNESS:
+                case CMD_SET_LED_BRIGHTNESS:
             #ifdef RGBLIGHT_ENABLE
-            rgblight_sethsv_noeeprom(rgblight_get_hue(), rgblight_get_sat(), data[1]);
+            obs_led_override = true;
+            if (data[1] == 0) {
+                rgblight_setrgb_range(0, 0, 0, 0, 12);
+                rgblight_disable_noeeprom();
+            } else {
+                rgblight_enable_noeeprom();
+                rgblight_sethsv_noeeprom(rgblight_get_hue(), rgblight_get_sat(), data[1]);
+            }
             #endif
             return true;
+
 
         case CMD_SET_PAGE:
             // OBS commands the controller to switch to a specific page
@@ -555,6 +565,7 @@ bool oled_task_user(void) {
 // â”€â”€â”€ Reactive ARGB Tally Lighting Engine (12 WS2812 LEDs per Schematic) â”€â”€â”€
 void housekeeping_task_user(void) {
     #if defined(RGBLIGHT_ENABLE)
+    if (obs_led_override) return;
     if (tally_light_auto && get_highest_layer(layer_state) == _PAGE_BROADCAST) {
         // Schematic 12-LED Daisy Chain Mapping:
         // CAM1 = LED1 (index 0), CAM2 = LED4 (index 1)

@@ -13,6 +13,7 @@
 #define RGBLIGHT_SLEEP
 
 /* I2C OLED Configuration */
+#define OLED_DISPLAY_128X64
 #define OLED_TIMEOUT 60000
 #define OLED_BRIGHTNESS 255
 

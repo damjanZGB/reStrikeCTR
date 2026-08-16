@@ -381,6 +381,7 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
 // ─── OLED HUD Display with OBS Sync ───
 #ifdef OLED_ENABLE
 oled_rotation_t oled_init_user(oled_rotation_t rotation) {
+    oled_clear();
     return OLED_ROTATION_0;
 }
 
@@ -396,6 +397,8 @@ static void render_vu_bar(const char *label, uint8_t value) {
 }
 
 bool oled_task_user(void) {
+    oled_set_cursor(0, 0);
+
     // If OBS has pushed custom OLED content, render it instead of local HUD
     if (oled_custom_active) {
         for (uint8_t i = 0; i < 6; i++) {

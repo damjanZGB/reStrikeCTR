@@ -289,10 +289,12 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
 // Dynamic OLED Screen with 4 Rich Pages
 #ifdef OLED_ENABLE
 oled_rotation_t oled_init_user(oled_rotation_t rotation) {
+    oled_clear();
     return OLED_ROTATION_0;
 }
 
 bool oled_task_user(void) {
+    oled_set_cursor(0, 0);
     uint8_t current_page = get_highest_layer(layer_state);
 
     switch (current_page) {

@@ -1,9 +1,21 @@
-#include QMK_KEYBOARD_H
+﻿#include QMK_KEYBOARD_H
 #include "restrike_protocol.h"
+#if defined(VIA_ENABLE)
+#include "dynamic_keymap.h"
+#endif
 
 #ifdef RAW_ENABLE
 #include "raw_hid.h"
+#ifndef RAW_EPSIZE
+#define RAW_EPSIZE 32
 #endif
+#endif
+
+// â”€â”€â”€ External symbols from restrike_ctr.c â”€â”€â”€
+extern bool obs_connected;
+extern void restrike_send_handshake(void);
+extern void restrike_send_key_event(uint8_t key_idx, bool pressed);
+extern void restrike_send_encoder_event(uint8_t enc_idx, int8_t direction, uint8_t detents);
 
 // 4 Distinct Controller Pages (Layers)
 enum custom_pages {
@@ -37,7 +49,7 @@ enum custom_keycodes {
     RGB_TALLY_TOGGLE
 };
 
-// Global State
+// â”€â”€â”€ Global State (updated by both local keys and OBS downstream) â”€â”€â”€
 static uint8_t  active_camera    = 1;
 static bool     is_recording     = false;
 static bool     is_streaming     = false;
@@ -48,9 +60,115 @@ static uint8_t  mic_gain         = 60;   // 0 - 100%
 static uint8_t  replay_speed     = 100;  // 25, 50, 75, 100%
 static bool     ch_mute[4]       = {false, false, false, false};
 static bool     tally_light_auto = true;
+static uint8_t  stream_health    = HEALTH_OK;
+static uint8_t  audio_vu[4]      = {0, 0, 0, 0};  // VU peak meters from OBS
+static char     oled_custom[8][21];                 // 8 lines Ã— 20 chars from OBS
+static bool     oled_custom_active = false;         // When true, OBS controls the OLED
 
+// â”€â”€â”€ Raw HID Downstream Receiver (OBS â†’ Controller) â”€â”€â”€
 #ifdef RAW_ENABLE
-__attribute__((unused)) static uint8_t keycode_to_key_idx(uint16_t keycode) {
+static bool handle_restrike_raw_hid(uint8_t *data, uint8_t length) {
+    uint8_t cmd = data[0];
+
+    switch (cmd) {
+        case CMD_SET_ACTIVE_CAMERA:
+            // OBS tells us which scene/camera is now LIVE on program output
+            active_camera = data[1];
+            return true;
+
+        case CMD_SET_REC_STREAM:
+            // OBS tells us the real recording and streaming state
+            is_recording = (bool)data[1];
+            is_streaming = (bool)data[2];
+            return true;
+
+        case CMD_SET_AUDIO_LEVELS:
+            // Real-time VU peak meters from OBS audio mixer
+            audio_vu[0] = data[1];
+            audio_vu[1] = data[2];
+            audio_vu[2] = data[3];
+            audio_vu[3] = data[4];
+            return true;
+
+        case CMD_SET_STREAM_HEALTH:
+            // 0 = OK (green), 1 = Warning (amber), 2 = Critical (red)
+            stream_health = data[1];
+            return true;
+
+        case CMD_SET_TALLY_COLOR:
+            // Direct per-LED color override from OBS
+            #ifdef RGBLIGHT_ENABLE
+            {
+                uint8_t led_idx = data[1];
+                if (led_idx < RESTRIKE_CTR_NUM_LEDS) {
+                    rgblight_setrgb_at(data[2], data[3], data[4], led_idx);
+                }
+            }
+            #endif
+            return true;
+
+        case CMD_SET_OLED_LINE:
+            // OBS pushes custom text to a specific OLED line
+            {
+                uint8_t line = data[1];
+                if (line < 6) {
+                    memset(oled_custom[line], 0, 21);
+                    memcpy(oled_custom[line], &data[2], 20);
+                    oled_custom_active = true;
+                }
+            }
+            return true;
+
+        case CMD_SET_LED_BRIGHTNESS:
+            #ifdef RGBLIGHT_ENABLE
+            rgblight_sethsv_noeeprom(rgblight_get_hue(), rgblight_get_sat(), data[1]);
+            #endif
+            return true;
+
+        case CMD_SET_PAGE:
+            // OBS commands the controller to switch to a specific page
+            if (data[1] < 4) {
+                layer_move(data[1]);
+            }
+            return true;
+
+        case CMD_PING:
+            // Host is alive - mark connection as active and reply with PONG + handshake
+            obs_connected = true;
+            oled_custom_active = false;  // Reset custom OLED on reconnect
+            memset(oled_custom, 0, sizeof(oled_custom));
+            {
+                uint8_t pong_data[RAW_EPSIZE];
+                memset(pong_data, 0, RAW_EPSIZE);
+                pong_data[0] = CMD_PONG;
+                raw_hid_send(pong_data, RAW_EPSIZE);
+            }
+            restrike_send_handshake();
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+#if defined(VIA_ENABLE)
+bool via_command_kb(uint8_t *data, uint8_t length) {
+    if (handle_restrike_raw_hid(data, length)) {
+        return true;
+    }
+    return false;
+}
+#else
+void raw_hid_receive(uint8_t *data, uint8_t length) {
+    handle_restrike_raw_hid(data, length);
+}
+#endif
+
+#endif // RAW_ENABLE
+
+// â”€â”€â”€ Key Matrix Index Lookup (for upstream event reporting) â”€â”€â”€
+// Maps custom keycodes to a sequential key index 0..9
+static uint8_t keycode_to_key_idx(uint16_t keycode) {
     switch (keycode) {
         case CAM_1:         return 0; // [0,0] Top-Left
         case CAM_2:         return 1; // [0,1] Top-Mid
@@ -65,9 +183,8 @@ __attribute__((unused)) static uint8_t keycode_to_key_idx(uint16_t keycode) {
         default:            return 0xFF;
     }
 }
-#endif
 
-// ─── Keymaps for 4 Pages ───
+// â”€â”€â”€ Keymaps for 4 Pages â”€â”€â”€
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_PAGE_BROADCAST] = LAYOUT(
         CAM_1,       CAM_2,       KC_F17,      KC_F18,
@@ -98,8 +215,16 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     )
 };
 
-// Key event processor
+// â”€â”€â”€ Key Event Processor â”€â”€â”€
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    // Always send upstream Raw HID event for every physical key press/release
+    #ifdef RAW_ENABLE
+    uint8_t idx = matrix_to_key_idx(record->event.key.row, record->event.key.col);
+    if (idx != 0xFF) {
+        restrike_send_key_event(idx, record->event.pressed);
+    }
+    #endif
+
     if (record->event.pressed) {
         switch (keycode) {
             // Page Cycling (Zoom Knob Click)
@@ -164,31 +289,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 return false;
 
             // Replay Controls (Page 3)
-            case SPEED_25:
-                replay_speed = 25;
-                tap_code16(C(KC_1));
-                return false;
-            case SPEED_50:
-                replay_speed = 50;
-                tap_code16(C(KC_2));
-                return false;
-            case SPEED_75:
-                replay_speed = 75;
-                tap_code16(C(KC_3));
-                return false;
-            case SPEED_100:
-                replay_speed = 100;
-                tap_code16(C(KC_4));
-                return false;
-            case MARK_IN:
-                tap_code16(KC_LBRC);
-                return false;
-            case MARK_OUT:
-                tap_code16(KC_RBRC);
-                return false;
-            case SAVE_REPLAY:
-                tap_code16(KC_F24);
-                return false;
+            case SPEED_25:  replay_speed = 25;  tap_code16(C(KC_1)); return false;
+            case SPEED_50:  replay_speed = 50;  tap_code16(C(KC_2)); return false;
+            case SPEED_75:  replay_speed = 75;  tap_code16(C(KC_3)); return false;
+            case SPEED_100: replay_speed = 100; tap_code16(C(KC_4)); return false;
+            case MARK_IN:   tap_code16(KC_LBRC); return false;
+            case MARK_OUT:  tap_code16(KC_RBRC); return false;
+            case SAVE_REPLAY: tap_code16(KC_F24); return false;
 
             // Lighting Controls (Page 4)
             case RGB_TALLY_TOGGLE:
@@ -202,13 +309,19 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     return true;
 }
 
-// Context-Aware Rotary Encoders
+// â”€â”€â”€ Context-Aware Rotary Encoders â”€â”€â”€
 #if !defined(ENCODER_MAP_ENABLE)
 bool encoder_update_user(uint8_t index, bool clockwise) {
     uint8_t current_page = get_highest_layer(layer_state);
 
+    // Always send upstream encoder event when OBS is connected
+    #ifdef RAW_ENABLE
+    if (obs_connected) {
+        restrike_send_encoder_event(index, clockwise ? 1 : -1, 1);
+    }
+    #endif
+
     if (index == 0) {
-        // ENCODER 1: ZOOM / GAIN / BRIGHTNESS KNOB
         switch (current_page) {
             case _PAGE_BROADCAST:
                 if (clockwise) {
@@ -219,7 +332,6 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
                     tap_code16(C(KC_MINS));
                 }
                 break;
-
             case _PAGE_AUDIO:
                 if (clockwise) {
                     if (mic_gain < 100) mic_gain += 5;
@@ -229,36 +341,21 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
                     tap_code16(C(KC_VOLD));
                 }
                 break;
-
             case _PAGE_REPLAY:
-                if (clockwise) {
-                    tap_code16(C(KC_RGHT));
-                } else {
-                    tap_code16(C(KC_LEFT));
-                }
+                if (clockwise) tap_code16(C(KC_RGHT));
+                else           tap_code16(C(KC_LEFT));
                 break;
-
             case _PAGE_LIGHTING:
-                if (clockwise) {
-                    rgblight_increase_val();
-                } else {
-                    rgblight_decrease_val();
-                }
+                if (clockwise) rgblight_increase_val();
+                else           rgblight_decrease_val();
                 break;
         }
     } else if (index == 1) {
-        // ENCODER 2: SHUFFLE / VOLUME / SCRUB / SPEED KNOB
         switch (current_page) {
             case _PAGE_BROADCAST:
-                if (clockwise) {
-                    scrub_dir = 1;
-                    tap_code16(KC_RGHT);
-                } else {
-                    scrub_dir = -1;
-                    tap_code16(KC_LEFT);
-                }
+                scrub_dir = clockwise ? 1 : -1;
+                tap_code16(clockwise ? KC_RGHT : KC_LEFT);
                 break;
-
             case _PAGE_AUDIO:
                 if (clockwise) {
                     if (master_vol < 100) master_vol += 2;
@@ -268,23 +365,13 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
                     tap_code16(KC_VOLD);
                 }
                 break;
-
             case _PAGE_REPLAY:
-                if (clockwise) {
-                    scrub_dir = 1;
-                    tap_code16(KC_RGHT);
-                } else {
-                    scrub_dir = -1;
-                    tap_code16(KC_LEFT);
-                }
+                scrub_dir = clockwise ? 1 : -1;
+                tap_code16(clockwise ? KC_RGHT : KC_LEFT);
                 break;
-
             case _PAGE_LIGHTING:
-                if (clockwise) {
-                    rgblight_increase_hue();
-                } else {
-                    rgblight_decrease_hue();
-                }
+                if (clockwise) rgblight_increase_hue();
+                else           rgblight_decrease_hue();
                 break;
         }
     }
@@ -292,7 +379,13 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
 }
 #endif
 
-// Dynamic OLED Screen with 4 Rich Pages
+void keyboard_post_init_user(void) {
+#if defined(VIA_ENABLE)
+    dynamic_keymap_reset();
+#endif
+}
+
+// â”€â”€â”€ OLED HUD Display with OBS Sync â”€â”€â”€
 #ifdef OLED_ENABLE
 oled_rotation_t oled_init_user(oled_rotation_t rotation) {
     oled_clear();
@@ -300,10 +393,21 @@ oled_rotation_t oled_init_user(oled_rotation_t rotation) {
 }
 
 bool oled_task_user(void) {
+    // If OBS has pushed custom OLED content (up to 8 lines), render it
+    if (oled_custom_active) {
+        for (uint8_t i = 0; i < 8; i++) {
+            oled_set_cursor(0, i);
+            if (oled_custom[i][0] != '\0') {
+                oled_write(oled_custom[i], false);
+            }
+        }
+        return false;
+    }
+
     uint8_t current_page = get_highest_layer(layer_state);
 
     switch (current_page) {
-        // ─── PAGE 1: BROADCAST HUD ───
+        // â”€â”€â”€ PAGE 1: BROADCAST HUD â”€â”€â”€
         case _PAGE_BROADCAST: {
             oled_set_cursor(0, 0);
             oled_write_P(PSTR("  RE-STRIKE STUDIO  "), false);
@@ -349,7 +453,7 @@ bool oled_task_user(void) {
             break;
         }
 
-        // ─── PAGE 2: AUDIO MIXER ───
+        // â”€â”€â”€ PAGE 2: AUDIO MIXER â”€â”€â”€
         case _PAGE_AUDIO: {
             oled_set_cursor(0, 0);
             oled_write_P(PSTR("    AUDIO MIXER     "), false);
@@ -383,7 +487,7 @@ bool oled_task_user(void) {
             break;
         }
 
-        // ─── PAGE 3: INSTANT REPLAY ───
+        // â”€â”€â”€ PAGE 3: INSTANT REPLAY â”€â”€â”€
         case _PAGE_REPLAY: {
             oled_set_cursor(0, 0);
             oled_write_P(PSTR("   INSTANT REPLAY   "), false);
@@ -411,7 +515,7 @@ bool oled_task_user(void) {
             break;
         }
 
-        // ─── PAGE 4: LIGHTING & RGB ───
+        // â”€â”€â”€ PAGE 4: LIGHTING & RGB â”€â”€â”€
         case _PAGE_LIGHTING: {
             oled_set_cursor(0, 0);
             oled_write_P(PSTR("    SYSTEM SETUP    "), false);
@@ -447,17 +551,48 @@ bool oled_task_user(void) {
 }
 #endif
 
-// Reactive ARGB Tally Lighting Engine
+// â”€â”€â”€ Reactive ARGB Tally Lighting Engine â”€â”€â”€
 void housekeeping_task_user(void) {
     #if defined(RGBLIGHT_ENABLE)
     if (tally_light_auto && get_highest_layer(layer_state) == _PAGE_BROADCAST) {
         uint8_t cam_led_idx = active_camera - 1;
 
+        // Set active camera LED based on recording state
         if (is_recording) {
-            rgblight_sethsv_at(0, 255, 200, cam_led_idx);   // RED
+            rgblight_sethsv_at(0, 255, 200, cam_led_idx);    // RED = Program/Recording
         } else {
-            rgblight_sethsv_at(85, 255, 200, cam_led_idx);  // GREEN
+            rgblight_sethsv_at(85, 255, 200, cam_led_idx);   // GREEN = Preview/Standby
+        }
+
+        // Status LEDs 8-11: Stream health indicator
+        if (obs_connected) {
+            switch (stream_health) {
+                case HEALTH_OK:
+                    rgblight_sethsv_at(85, 255, 150, 9);     // Green
+                    break;
+                case HEALTH_WARNING:
+                    rgblight_sethsv_at(30, 255, 200, 9);     // Amber
+                    break;
+                case HEALTH_CRITICAL:
+                    rgblight_sethsv_at(0, 255, 255, 9);      // Red pulse
+                    break;
+            }
+
+            // LED 10: Recording tally
+            if (is_recording) {
+                rgblight_sethsv_at(0, 255, 200, 10);         // Red
+            } else {
+                rgblight_sethsv_at(0, 0, 30, 10);            // Dim white
+            }
+
+            // LED 11: Streaming tally
+            if (is_streaming) {
+                rgblight_sethsv_at(170, 255, 200, 11);       // Blue
+            } else {
+                rgblight_sethsv_at(0, 0, 30, 11);            // Dim white
+            }
         }
     }
     #endif
 }
+

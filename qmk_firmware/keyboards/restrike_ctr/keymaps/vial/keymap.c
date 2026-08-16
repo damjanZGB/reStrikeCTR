@@ -1,4 +1,4 @@
-#include QMK_KEYBOARD_H
+﻿#include QMK_KEYBOARD_H
 #include "restrike_protocol.h"
 #if defined(VIA_ENABLE)
 #include "dynamic_keymap.h"
@@ -11,7 +11,7 @@
 #endif
 #endif
 
-// ─── External symbols from restrike_ctr.c ───
+// â”€â”€â”€ External symbols from restrike_ctr.c â”€â”€â”€
 extern bool obs_connected;
 extern void restrike_send_handshake(void);
 extern void restrike_send_key_event(uint8_t key_idx, bool pressed);
@@ -49,7 +49,7 @@ enum custom_keycodes {
     RGB_TALLY_TOGGLE
 };
 
-// ─── Global State (updated by both local keys and OBS downstream) ───
+// â”€â”€â”€ Global State (updated by both local keys and OBS downstream) â”€â”€â”€
 static uint8_t  active_camera    = 1;
 static bool     is_recording     = false;
 static bool     is_streaming     = false;
@@ -62,10 +62,10 @@ static bool     ch_mute[4]       = {false, false, false, false};
 static bool     tally_light_auto = true;
 static uint8_t  stream_health    = HEALTH_OK;
 static uint8_t  audio_vu[4]      = {0, 0, 0, 0};  // VU peak meters from OBS
-static char     oled_custom[8][21];                 // 8 lines × 20 chars from OBS
+static char     oled_custom[8][21];                 // 8 lines Ã— 20 chars from OBS
 static bool     oled_custom_active = false;         // When true, OBS controls the OLED
 
-// ─── Raw HID Downstream Receiver (OBS → Controller) ───
+// â”€â”€â”€ Raw HID Downstream Receiver (OBS â†’ Controller) â”€â”€â”€
 #ifdef RAW_ENABLE
 static bool handle_restrike_raw_hid(uint8_t *data, uint8_t length) {
     uint8_t cmd = data[0];
@@ -166,7 +166,7 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
 
 #endif // RAW_ENABLE
 
-// ─── Key Matrix Index Lookup (for upstream event reporting) ───
+// â”€â”€â”€ Key Matrix Index Lookup (for upstream event reporting) â”€â”€â”€
 // Maps custom keycodes to a sequential key index 0..9
 static uint8_t keycode_to_key_idx(uint16_t keycode) {
     switch (keycode) {
@@ -184,7 +184,7 @@ static uint8_t keycode_to_key_idx(uint16_t keycode) {
     }
 }
 
-// ─── Keymaps for 4 Pages ───
+// â”€â”€â”€ Keymaps for 4 Pages â”€â”€â”€
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_PAGE_BROADCAST] = LAYOUT(
         CAM_1,       CAM_2,       KC_F17,      KC_F18,
@@ -215,15 +215,13 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     )
 };
 
-// ─── Key Event Processor ───
+// â”€â”€â”€ Key Event Processor â”€â”€â”€
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-    // Send upstream HID event for every key press/release when OBS is connected
+    // Always send upstream Raw HID event for every physical key press/release
     #ifdef RAW_ENABLE
-    if (obs_connected) {
-        uint8_t idx = keycode_to_key_idx(keycode);
-        if (idx != 0xFF) {
-            restrike_send_key_event(idx, record->event.pressed);
-        }
+    uint8_t idx = matrix_to_key_idx(record->event.key.row, record->event.key.col);
+    if (idx != 0xFF) {
+        restrike_send_key_event(idx, record->event.pressed);
     }
     #endif
 
@@ -311,7 +309,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     return true;
 }
 
-// ─── Context-Aware Rotary Encoders ───
+// â”€â”€â”€ Context-Aware Rotary Encoders â”€â”€â”€
 #if !defined(ENCODER_MAP_ENABLE)
 bool encoder_update_user(uint8_t index, bool clockwise) {
     uint8_t current_page = get_highest_layer(layer_state);
@@ -387,7 +385,7 @@ void keyboard_post_init_user(void) {
 #endif
 }
 
-// ─── OLED HUD Display with OBS Sync ───
+// â”€â”€â”€ OLED HUD Display with OBS Sync â”€â”€â”€
 #ifdef OLED_ENABLE
 oled_rotation_t oled_init_user(oled_rotation_t rotation) {
     oled_clear();
@@ -409,7 +407,7 @@ bool oled_task_user(void) {
     uint8_t current_page = get_highest_layer(layer_state);
 
     switch (current_page) {
-        // ─── PAGE 1: BROADCAST HUD ───
+        // â”€â”€â”€ PAGE 1: BROADCAST HUD â”€â”€â”€
         case _PAGE_BROADCAST: {
             oled_set_cursor(0, 0);
             oled_write_P(PSTR("  RE-STRIKE STUDIO  "), false);
@@ -455,7 +453,7 @@ bool oled_task_user(void) {
             break;
         }
 
-        // ─── PAGE 2: AUDIO MIXER ───
+        // â”€â”€â”€ PAGE 2: AUDIO MIXER â”€â”€â”€
         case _PAGE_AUDIO: {
             oled_set_cursor(0, 0);
             oled_write_P(PSTR("    AUDIO MIXER     "), false);
@@ -489,7 +487,7 @@ bool oled_task_user(void) {
             break;
         }
 
-        // ─── PAGE 3: INSTANT REPLAY ───
+        // â”€â”€â”€ PAGE 3: INSTANT REPLAY â”€â”€â”€
         case _PAGE_REPLAY: {
             oled_set_cursor(0, 0);
             oled_write_P(PSTR("   INSTANT REPLAY   "), false);
@@ -517,7 +515,7 @@ bool oled_task_user(void) {
             break;
         }
 
-        // ─── PAGE 4: LIGHTING & RGB ───
+        // â”€â”€â”€ PAGE 4: LIGHTING & RGB â”€â”€â”€
         case _PAGE_LIGHTING: {
             oled_set_cursor(0, 0);
             oled_write_P(PSTR("    SYSTEM SETUP    "), false);
@@ -553,7 +551,7 @@ bool oled_task_user(void) {
 }
 #endif
 
-// ─── Reactive ARGB Tally Lighting Engine ───
+// â”€â”€â”€ Reactive ARGB Tally Lighting Engine â”€â”€â”€
 void housekeeping_task_user(void) {
     #if defined(RGBLIGHT_ENABLE)
     if (tally_light_auto && get_highest_layer(layer_state) == _PAGE_BROADCAST) {
@@ -597,3 +595,4 @@ void housekeeping_task_user(void) {
     }
     #endif
 }
+

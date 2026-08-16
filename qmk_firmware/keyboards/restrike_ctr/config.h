@@ -13,10 +13,18 @@
 #define RGBLIGHT_SLEEP
 
 /* I2C OLED Configuration */
-#define OLED_DISPLAY_128X64
-#define OLED_IC OLED_IC_SH1106
-#define OLED_COLUMN_OFFSET 2
-#define F_SCL 100000UL
+#ifndef OLED_DISPLAY_128X64
+#    define OLED_DISPLAY_128X64
+#endif
+#ifndef OLED_IC
+#    define OLED_IC OLED_IC_SH1106
+#endif
+#ifndef OLED_COLUMN_OFFSET
+#    define OLED_COLUMN_OFFSET 2
+#endif
+#ifndef F_SCL
+#    define F_SCL 100000UL
+#endif
 #define OLED_TIMEOUT 60000
 #define OLED_BRIGHTNESS 255
 

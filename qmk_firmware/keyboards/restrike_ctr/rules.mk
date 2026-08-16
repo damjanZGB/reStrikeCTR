@@ -13,6 +13,7 @@ BACKLIGHT_ENABLE = no       # Custom matrix backlighting disabled
 RGBLIGHT_ENABLE = yes       # WS2812 Addressable RGB LED control
 ENCODER_ENABLE = yes        # Rotary encoders (Zoom + Shuffle)
 OLED_ENABLE = yes           # I2C OLED display driver
+OPT_DEFS += -DOLED_DISPLAY_128X64 -DOLED_IC=1 -DOLED_COLUMN_OFFSET=2 -DF_SCL=100000UL
 LTO_ENABLE = yes            # Link-time optimization to fit ATmega32U4 32KB flash
 POINTING_DEVICE_ENABLE = no # Enabled conditionally if analog mouse mode is preferred
 JOYSTICK_ENABLE = no        # Enabled conditionally if DirectInput joystick mode is preferred

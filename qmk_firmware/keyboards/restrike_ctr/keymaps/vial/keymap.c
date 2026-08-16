@@ -1,5 +1,8 @@
 #include QMK_KEYBOARD_H
 #include "restrike_protocol.h"
+#if defined(VIA_ENABLE)
+#include "dynamic_keymap.h"
+#endif
 
 #ifdef RAW_ENABLE
 #include "raw_hid.h"
@@ -377,6 +380,12 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
     return false;
 }
 #endif
+
+void keyboard_post_init_user(void) {
+#if defined(VIA_ENABLE)
+    dynamic_keymap_reset();
+#endif
+}
 
 // ─── OLED HUD Display with OBS Sync ───
 #ifdef OLED_ENABLE

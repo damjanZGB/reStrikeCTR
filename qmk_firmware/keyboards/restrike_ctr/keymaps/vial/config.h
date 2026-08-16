@@ -1,7 +1,7 @@
 #pragma once
 
-/* Vial Unique Keyboard ID */
-#define VIAL_KEYBOARD_UID {0x8C, 0x51, 0x7E, 0x2A, 0x4B, 0x9D, 0x33, 0xFA}
+/* Vial Unique Keyboard ID - incremented to force EEPROM keymap reload */
+#define VIAL_KEYBOARD_UID {0x8C, 0x51, 0x7E, 0x2A, 0x4B, 0x9D, 0x33, 0xFC}
 
 /* Security unlock combo: Hold CAM 1 (Row 0, Col 0) and CAM 2 (Row 0, Col 1) */
 #define VIAL_UNLOCK_COMBO_ROWS { 0, 0 }

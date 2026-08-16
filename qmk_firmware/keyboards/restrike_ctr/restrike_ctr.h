@@ -2,24 +2,6 @@
 
 #include "quantum.h"
 
-/* Layout Macro
- *
- * Physical arrangement:
- * Row 0: [CAM 1]    [CAM 2]    [CAM 3]    [CAM 4]
- * Row 1: [AUX 1]    [AUX 2]
- * Bottom:           [PLAY/PAUSE]   [START/STOP]
- * Knobs: [ZOOM CLICK]                         [SHUFFLE CLICK]
- */
-#define LAYOUT( \
-    k00, k01, k02, k12, \
-    k10, k11,           \
-    k03, k13,           \
-    k04, k14            \
-) { \
-    { k00, k01, k02, k03, k04 }, \
-    { k10, k11, k12, k13, k14 }  \
-}
-
 /* Shared state exported by restrike_ctr.c for use in keymaps */
 extern int16_t  joy_x_val;
 extern int16_t  joy_y_val;

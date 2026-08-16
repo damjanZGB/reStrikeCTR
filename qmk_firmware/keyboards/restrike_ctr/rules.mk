@@ -4,7 +4,7 @@ MCU = atmega32u4
 BOOTLOADER = caterina
 
 # Build Options
-BOOTMAGIC_ENABLE = lite     # Enable Bootmagic Lite for hardware recovery
+BOOTMAGIC_ENABLE = yes      # Enable Bootmagic for hardware recovery
 MOUSEKEY_ENABLE = yes       # Mouse keys for analog stick cursor/pan control
 EXTRAKEY_ENABLE = yes       # Audio controls and System keys
 CONSOLE_ENABLE = no         # Console for debug (disable to save ROM)
@@ -17,3 +17,6 @@ LTO_ENABLE = yes            # Link-time optimization to fit ATmega32U4 32KB flas
 POINTING_DEVICE_ENABLE = no # Enabled conditionally if analog mouse mode is preferred
 JOYSTICK_ENABLE = no        # Enabled conditionally if DirectInput joystick mode is preferred
 RAW_ENABLE = yes            # Bidirectional USB HID communication with reStrikeOBS plugin
+
+# Analog ADC driver for 2-axis joystick
+SRC += analog.c

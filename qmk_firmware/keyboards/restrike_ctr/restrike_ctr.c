@@ -1,9 +1,14 @@
 #include "restrike_ctr.h"
 #include "restrike_protocol.h"
+#include "gpio.h"
 #include "analog.h"
+#include <string.h>
 
 #ifdef RAW_ENABLE
 #include "raw_hid.h"
+#ifndef RAW_EPSIZE
+#define RAW_EPSIZE 32
+#endif
 #endif
 
 // ─── Global State (shared with keymap) ───
@@ -97,11 +102,11 @@ void restrike_send_joystick_state(int16_t x, int16_t y, bool btn) {
 
 void keyboard_pre_init_kb(void) {
     // Initialize Signal LED pin
-    setPinOutput(SIG_LED_PIN);
-    writePinLow(SIG_LED_PIN);
+    gpio_set_pin_output(SIG_LED_PIN);
+    gpio_write_pin_low(SIG_LED_PIN);
 
     // Initialize Joystick Push Button (Active Low with pullup)
-    setPinInputHigh(JOYSTICK_SW_PIN);
+    gpio_set_pin_input_high(JOYSTICK_SW_PIN);
 
     keyboard_pre_init_user();
 }
@@ -111,14 +116,12 @@ void keyboard_post_init_kb(void) {
 
     // Blink signal LED on startup
     for (uint8_t i = 0; i < 3; i++) {
-        writePinHigh(SIG_LED_PIN);
+        gpio_write_pin_high(SIG_LED_PIN);
         wait_ms(60);
-        writePinLow(SIG_LED_PIN);
+        gpio_write_pin_low(SIG_LED_PIN);
         wait_ms(60);
     }
 
-    // Send initial handshake (host may not be listening yet, but that's OK -
-    // it will request one via CMD_PING when reStrikeOBS connects)
     #ifdef RAW_ENABLE
     restrike_send_handshake();
     #endif
@@ -136,42 +139,9 @@ void housekeeping_task_kb(void) {
         last_joy_poll = now;
 
         // Read ADC channels
-        joy_x_val   = analogReadPin(JOYSTICK_HORIZ_PIN);
-        joy_y_val   = analogReadPin(JOYSTICK_VERT_PIN);
-        joy_btn_state = !readPin(JOYSTICK_SW_PIN); // Active LOW
-
-        // Threshold detection for Pan/Tilt navigation (mouse emulation)
-        // Center is ~512, deadband +/- 120
-        #if defined(MOUSEKEY_ENABLE) && !defined(RAW_ENABLE)
-        report_mouse_t current_report = {};
-        bool mouse_moved = false;
-
-        if (joy_x_val > 640) {
-            current_report.x = (joy_x_val - 640) / 64;
-            mouse_moved = true;
-        } else if (joy_x_val < 384) {
-            current_report.x = -((384 - joy_x_val) / 64);
-            mouse_moved = true;
-        }
-
-        if (joy_y_val > 640) {
-            current_report.y = -((joy_y_val - 640) / 64);
-            mouse_moved = true;
-        } else if (joy_y_val < 384) {
-            current_report.y = (384 - joy_y_val) / 64;
-            mouse_moved = true;
-        }
-
-        if (joy_btn_state) {
-            current_report.buttons |= MOUSE_BTN1;
-            mouse_moved = true;
-        }
-
-        if (mouse_moved) {
-            pointing_device_set_report(current_report);
-            pointing_device_send();
-        }
-        #endif
+        joy_x_val     = analogReadPin(JOYSTICK_HORIZ_PIN);
+        joy_y_val     = analogReadPin(JOYSTICK_VERT_PIN);
+        joy_btn_state = !gpio_read_pin(JOYSTICK_SW_PIN); // Active LOW
     }
 
     #ifdef RAW_ENABLE

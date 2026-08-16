@@ -2,6 +2,7 @@
     "keyboard_name": "ReStrike Camera Controller",
     "url": "https://restrike.io",
     "maintainer": "ReStrike",
+    "manufacturer": "ReStrike",
     "width": 14,
     "height": 7,
     "debounce": 5,
@@ -12,10 +13,10 @@
     },
     "processor": "atmega32u4",
     "bootloader": "caterina",
+    "diode_direction": "COL2ROW",
     "matrix_pins": {
         "cols": ["D4", "C6", "D7", "E6", "B4"],
-        "rows": ["B5", "F6"],
-        "diode_direction": "COL2ROW"
+        "rows": ["B5", "F6"]
     },
     "encoder": {
         "rotary": [
@@ -23,10 +24,16 @@
             {"pin_a": "B3", "pin_b": "B2", "resolution": 4}
         ]
     },
+    "ws2812": {
+        "pin": "B6"
+    },
     "rgblight": {
-        "pin": "B6",
-        "num_leds": 12,
+        "led_count": 12,
         "max_brightness": 200,
+        "layers": {
+            "enabled": true,
+            "max": 8
+        },
         "animations": {
             "breathing": true,
             "rainbow_mood": true,

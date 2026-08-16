@@ -3,6 +3,9 @@
 
 #ifdef RAW_ENABLE
 #include "raw_hid.h"
+#ifndef RAW_EPSIZE
+#define RAW_EPSIZE 32
+#endif
 #endif
 
 // ─── External symbols from restrike_ctr.c ───
@@ -61,20 +64,20 @@ static bool     oled_custom_active = false;         // When true, OBS controls t
 
 // ─── Raw HID Downstream Receiver (OBS → Controller) ───
 #ifdef RAW_ENABLE
-void raw_hid_receive(uint8_t *data, uint8_t length) {
+static bool handle_restrike_raw_hid(uint8_t *data, uint8_t length) {
     uint8_t cmd = data[0];
 
     switch (cmd) {
         case CMD_SET_ACTIVE_CAMERA:
             // OBS tells us which scene/camera is now LIVE on program output
             active_camera = data[1];
-            break;
+            return true;
 
         case CMD_SET_REC_STREAM:
             // OBS tells us the real recording and streaming state
             is_recording = (bool)data[1];
             is_streaming = (bool)data[2];
-            break;
+            return true;
 
         case CMD_SET_AUDIO_LEVELS:
             // Real-time VU peak meters from OBS audio mixer
@@ -82,24 +85,24 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
             audio_vu[1] = data[2];
             audio_vu[2] = data[3];
             audio_vu[3] = data[4];
-            break;
+            return true;
 
         case CMD_SET_STREAM_HEALTH:
             // 0 = OK (green), 1 = Warning (amber), 2 = Critical (red)
             stream_health = data[1];
-            break;
+            return true;
 
         case CMD_SET_TALLY_COLOR:
             // Direct per-LED color override from OBS
             #ifdef RGBLIGHT_ENABLE
             {
                 uint8_t led_idx = data[1];
-                if (led_idx < RGBLED_NUM) {
+                if (led_idx < RESTRIKE_CTR_NUM_LEDS) {
                     rgblight_setrgb_at(data[2], data[3], data[4], led_idx);
                 }
             }
             #endif
-            break;
+            return true;
 
         case CMD_SET_OLED_LINE:
             // OBS pushes custom text to a specific OLED line
@@ -111,20 +114,20 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
                     oled_custom_active = true;
                 }
             }
-            break;
+            return true;
 
         case CMD_SET_LED_BRIGHTNESS:
             #ifdef RGBLIGHT_ENABLE
             rgblight_sethsv_noeeprom(rgblight_get_hue(), rgblight_get_sat(), data[1]);
             #endif
-            break;
+            return true;
 
         case CMD_SET_PAGE:
             // OBS commands the controller to switch to a specific page
             if (data[1] < 4) {
                 layer_move(data[1]);
             }
-            break;
+            return true;
 
         case CMD_PING:
             // Host is alive - mark connection as active and reply with PONG + handshake
@@ -132,19 +135,32 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
             oled_custom_active = false;  // Reset custom OLED on reconnect
             memset(oled_custom, 0, sizeof(oled_custom));
             {
-                uint8_t pong[1] = {0};
                 uint8_t pong_data[RAW_EPSIZE];
                 memset(pong_data, 0, RAW_EPSIZE);
                 pong_data[0] = CMD_PONG;
                 raw_hid_send(pong_data, RAW_EPSIZE);
             }
             restrike_send_handshake();
-            break;
+            return true;
 
         default:
-            break;
+            return false;
     }
 }
+
+#if defined(VIA_ENABLE)
+bool via_command_kb(uint8_t *data, uint8_t length) {
+    if (handle_restrike_raw_hid(data, length)) {
+        return true;
+    }
+    return false;
+}
+#else
+void raw_hid_receive(uint8_t *data, uint8_t length) {
+    handle_restrike_raw_hid(data, length);
+}
+#endif
+
 #endif // RAW_ENABLE
 
 // ─── Key Matrix Index Lookup (for upstream event reporting) ───
@@ -189,9 +205,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     ),
 
     [_PAGE_LIGHTING] = LAYOUT(
-        RGB_TOG,     RGB_MOD,     RGB_RMOD,    RGB_TALLY_TOGGLE,
-        RGB_HUI,     RGB_HUD,
-        RGB_SAI,     RGB_SAD,
+        UG_TOGG,     UG_NEXT,     UG_PREV,     RGB_TALLY_TOGGLE,
+        UG_HUEU,     UG_HUED,
+        UG_SATU,     UG_SATD,
         PAGE_CYCLE,  RGB_M_P
     )
 };

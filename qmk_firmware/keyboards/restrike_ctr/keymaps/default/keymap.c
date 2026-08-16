@@ -85,9 +85,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
      * PAGE 4: ARGB HARDWARE LIGHTING & SYSTEM
      * ------------------------------------------------------------- */
     [_PAGE_LIGHTING] = LAYOUT(
-        RGB_TOG,     RGB_MOD,     RGB_RMOD,    RGB_TALLY_TOGGLE,
-        RGB_HUI,     RGB_HUD,
-        RGB_SAI,     RGB_SAD,
+        UG_TOGG,     UG_NEXT,     UG_PREV,     RGB_TALLY_TOGGLE,
+        UG_HUEU,     UG_HUED,
+        UG_SATU,     UG_SATD,
         PAGE_CYCLE,  RGB_M_P
     )
 };

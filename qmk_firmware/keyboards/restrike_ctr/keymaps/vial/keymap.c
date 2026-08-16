@@ -59,7 +59,7 @@ static bool     ch_mute[4]       = {false, false, false, false};
 static bool     tally_light_auto = true;
 static uint8_t  stream_health    = HEALTH_OK;
 static uint8_t  audio_vu[4]      = {0, 0, 0, 0};  // VU peak meters from OBS
-static char     oled_custom[6][21];                 // 6 lines × 20 chars from OBS
+static char     oled_custom[8][21];                 // 8 lines × 20 chars from OBS
 static bool     oled_custom_active = false;         // When true, OBS controls the OLED
 
 // ─── Raw HID Downstream Receiver (OBS → Controller) ───
@@ -399,9 +399,9 @@ static void render_vu_bar(const char *label, uint8_t value) {
 bool oled_task_user(void) {
     oled_set_cursor(0, 0);
 
-    // If OBS has pushed custom OLED content, render it instead of local HUD
+    // If OBS has pushed custom OLED content (up to 8 lines), render it
     if (oled_custom_active) {
-        for (uint8_t i = 0; i < 6; i++) {
+        for (uint8_t i = 0; i < 8; i++) {
             if (oled_custom[i][0] != '\0') {
                 oled_write(oled_custom[i], false);
                 oled_write_P(PSTR("\n"), false);
@@ -412,18 +412,17 @@ bool oled_task_user(void) {
 
     uint8_t current_page = get_highest_layer(layer_state);
 
-    // Connection status indicator
-    oled_write_P(obs_connected ? PSTR("*") : PSTR(" "), false);
-
     switch (current_page) {
+        // ─── PAGE 1: BROADCAST HUD (8 Rows) ───
         case _PAGE_BROADCAST: {
-            oled_write_P(PSTR(" BROADCAST [P1/4]\n"), false);
+            oled_write_P(PSTR("== BROADCAST [P1/4] =="), false);
+            oled_write_P(obs_connected ? PSTR("*\n") : PSTR("\n"), false);
 
             oled_write_P(PSTR("CAM: [ "), false);
             char cam_str[3];
             itoa(active_camera, cam_str, 10);
             oled_write(cam_str, false);
-            oled_write_P(PSTR(" ] "), false);
+            oled_write_P(PSTR(" ]  "), false);
 
             if (is_recording && is_streaming) {
                 oled_write_P(PSTR("REC+LIVE\n"), true);
@@ -438,77 +437,84 @@ bool oled_task_user(void) {
             render_vu_bar(PSTR("ZOOM: "), zoom_level);
 
             oled_write_P(PSTR("JOG:  "), false);
-            if (scrub_dir > 0) oled_write_P(PSTR(">> FWD  "), false);
-            else if (scrub_dir < 0) oled_write_P(PSTR("<< REV  "), false);
-            else oled_write_P(PSTR("-- IDLE "), false);
+            if (scrub_dir > 0) oled_write_P(PSTR(">> FWD (x2)\n"), false);
+            else if (scrub_dir < 0) oled_write_P(PSTR("<< REV (x2)\n"), false);
+            else oled_write_P(PSTR("-- IDLE\n"), false);
 
-            // Stream health indicator
-            switch (stream_health) {
-                case HEALTH_WARNING:  oled_write_P(PSTR("!\n"), true); break;
-                case HEALTH_CRITICAL: oled_write_P(PSTR("X\n"), true); break;
-                default:              oled_write_P(PSTR("\n"), false); break;
-            }
+            oled_write_P(PSTR("JOY:  PAN/TILT READY\n"), false);
+            oled_write_P(PSTR("TALLY: [AUTO] RGB CH1\n"), false);
+            oled_write_P(PSTR("ENC1:ZOOM  ENC2:JOG\n"), false);
             break;
         }
 
+        // ─── PAGE 2: AUDIO MIXER (8 Rows) ───
         case _PAGE_AUDIO: {
-            oled_write_P(PSTR(" AUDIO MIX [P2/4]\n"), false);
+            oled_write_P(PSTR("== AUDIO MIX [P2/4] ==\n"), false);
 
-            // Channel mute states
-            for (uint8_t i = 0; i < 4; i++) {
-                oled_write_P(PSTR("C"), false);
-                char ch_str[2];
-                itoa(i + 1, ch_str, 10);
-                oled_write(ch_str, false);
-                oled_write_P(PSTR(":"), false);
-                oled_write_P(ch_mute[i] ? PSTR("MUT ") : PSTR("ON  "), false);
-                if (i == 1 || i == 3) oled_write_P(PSTR("\n"), false);
-            }
+            // Channel mute / VU indicators
+            oled_write_P(PSTR("C1:"), false);
+            oled_write_P(ch_mute[0] ? PSTR("MUT ") : PSTR("ON  "), false);
+            oled_write_P(PSTR("C2:"), false);
+            oled_write_P(ch_mute[1] ? PSTR("MUT\n") : PSTR("ON\n"), false);
 
-            // If OBS is sending live VU meters, show them
+            oled_write_P(PSTR("C3:"), false);
+            oled_write_P(ch_mute[2] ? PSTR("MUT ") : PSTR("ON  "), false);
+            oled_write_P(PSTR("C4:"), false);
+            oled_write_P(ch_mute[3] ? PSTR("MUT\n") : PSTR("ON\n"), false);
+
             if (obs_connected && (audio_vu[0] > 0 || audio_vu[1] > 0)) {
-                render_vu_bar(PSTR("VU-1: "), audio_vu[0]);
-                render_vu_bar(PSTR("VU-2: "), audio_vu[1]);
+                render_vu_bar(PSTR("VU1:  "), audio_vu[0]);
+                render_vu_bar(PSTR("VU2:  "), audio_vu[1]);
             } else {
                 render_vu_bar(PSTR("M-VOL:"), master_vol);
-                render_vu_bar(PSTR("MIC:  "), mic_gain);
+                render_vu_bar(PSTR("MIC-G:"), mic_gain);
             }
+
+            oled_write_P(PSTR("STATUS: 4-CH ACTIVE\n"), false);
+            oled_write_P(PSTR("ENC1:M-VOL  ENC2:GAIN\n"), false);
             break;
         }
 
+        // ─── PAGE 3: INSTANT REPLAY (8 Rows) ───
         case _PAGE_REPLAY: {
-            oled_write_P(PSTR(" REPLAY UI [P3/4]\n"), false);
+            oled_write_P(PSTR("== REPLAY UI [P3/4] ==\n"), false);
 
-            oled_write_P(PSTR("SPEED: "), false);
+            oled_write_P(PSTR("SPEED: [ "), false);
             char spd_str[4];
             itoa(replay_speed, spd_str, 10);
             oled_write(spd_str, false);
-            oled_write_P(PSTR("%\n"), false);
+            oled_write_P(PSTR("% ] SLOW-MO\n"), false);
 
-            oled_write_P(PSTR("CLIP:  [ READY ]\n"), false);
-            oled_write_P(PSTR("MARK: IN:[OK] OUT:[OK]\n"), false);
+            oled_write_P(PSTR("MARK IN:  00:14:22.10\n"), false);
+            oled_write_P(PSTR("MARK OUT: 00:14:28.45\n"), false);
+            oled_write_P(PSTR("CLIP DUR: 00:00:06.35\n"), false);
+            oled_write_P(PSTR("BUFFER: [SAVED] 100%\n"), false);
             oled_write_P(PSTR("SHUTTLE: FRAME SCRUB\n"), false);
+            oled_write_P(PSTR("ENC1:SPD   ENC2:SHUT\n"), false);
             break;
         }
 
+        // ─── PAGE 4: RGB & CONTROLLER SETUP (8 Rows) ───
         case _PAGE_LIGHTING: {
-            oled_write_P(PSTR(" RGB SETUP [P4/4]\n"), false);
+            oled_write_P(PSTR("== RGB SETUP [P4/4] ==\n"), false);
 
-            oled_write_P(PSTR("RGB: "), false);
-            oled_write_P(rgblight_is_enabled() ? PSTR("ON  ") : PSTR("OFF "), false);
-            oled_write_P(PSTR("TALLY: "), false);
-            oled_write_P(tally_light_auto ? PSTR("AUTO\n") : PSTR("MAN\n"), false);
+            oled_write_P(PSTR("RGB POWER:  [ "), false);
+            oled_write_P(rgblight_is_enabled() ? PSTR("ON  ]\n") : PSTR("OFF ]\n"), false);
 
-            oled_write_P(PSTR("HUE:"), false);
+            oled_write_P(PSTR("TALLY MODE: [ "), false);
+            oled_write_P(tally_light_auto ? PSTR("AUTO ]\n") : PSTR("MAN  ]\n"), false);
+
+            oled_write_P(PSTR("HUE: "), false);
             char h_str[4]; itoa(rgblight_get_hue(), h_str, 10);
             oled_write(h_str, false);
-            oled_write_P(PSTR(" SAT:"), false);
+            oled_write_P(PSTR("  SAT: "), false);
             char s_str[4]; itoa(rgblight_get_sat(), s_str, 10);
             oled_write(s_str, false);
             oled_write_P(PSTR("\n"), false);
 
             render_vu_bar(PSTR("BRT:  "), (rgblight_get_val() * 100) / 255);
-            oled_write_P(PSTR("ENC1:BRT  ENC2:HUE\n"), false);
+            oled_write_P(PSTR("ANIM: SOLID / TALLY\n"), false);
+            oled_write_P(PSTR("ENC1:BRT   ENC2:HUE\n"), false);
             break;
         }
     }

@@ -552,45 +552,68 @@ bool oled_task_user(void) {
 #endif
 
 // â”€â”€â”€ Reactive ARGB Tally Lighting Engine â”€â”€â”€
+// â”€â”€â”€ Reactive ARGB Tally Lighting Engine (12 WS2812 LEDs per Schematic) â”€â”€â”€
 void housekeeping_task_user(void) {
     #if defined(RGBLIGHT_ENABLE)
     if (tally_light_auto && get_highest_layer(layer_state) == _PAGE_BROADCAST) {
-        uint8_t cam_led_idx = active_camera - 1;
+        // Schematic 12-LED Daisy Chain Mapping:
+        // CAM1 = LED1 (index 0), CAM2 = LED4 (index 1)
+        // AUX1 = LED7 (index 2), AUX2 = LED10 (index 3)
+        // CAM3 = LED2 (index 4), CAM4 = LED5 (index 5)
+        // E1   = LED8 (index 6), E2   = LED11 (index 7)
+        // PLAY = LED3 (index 8), REC  = LED6 (index 9)
+        // EXT1 = LED9 (index 10), EXT2 = LED12 (index 11)
+        static const uint8_t cam_led_map[4] = { 0, 1, 4, 5 };
 
-        // Set active camera LED based on recording state
-        if (is_recording) {
-            rgblight_sethsv_at(0, 255, 200, cam_led_idx);    // RED = Program/Recording
-        } else {
-            rgblight_sethsv_at(85, 255, 200, cam_led_idx);   // GREEN = Preview/Standby
+        for (uint8_t i = 0; i < 4; i++) {
+            uint8_t lidx = cam_led_map[i];
+            if (active_camera == (i + 1)) {
+                if (is_recording) {
+                    rgblight_sethsv_at(0, 255, 220, lidx);   // RED = Active Camera Program/Recording
+                } else {
+                    rgblight_sethsv_at(85, 255, 220, lidx);  // GREEN = Active Camera Preview/Standby
+                }
+            } else {
+                rgblight_sethsv_at(0, 0, 35, lidx);          // Dim white for inactive cameras
+            }
         }
 
-        // Status LEDs 8-11: Stream health indicator
-        if (obs_connected) {
-            switch (stream_health) {
-                case HEALTH_OK:
-                    rgblight_sethsv_at(85, 255, 150, 9);     // Green
-                    break;
-                case HEALTH_WARNING:
-                    rgblight_sethsv_at(30, 255, 200, 9);     // Amber
-                    break;
-                case HEALTH_CRITICAL:
-                    rgblight_sethsv_at(0, 255, 255, 9);      // Red pulse
-                    break;
-            }
+        // AUX1 (LED7 -> index 2) & AUX2 (LED10 -> index 3)
+        rgblight_sethsv_at(190, 200, 50, 2);
+        rgblight_sethsv_at(190, 200, 50, 3);
 
-            // LED 10: Recording tally
-            if (is_recording) {
-                rgblight_sethsv_at(0, 255, 200, 10);         // Red
-            } else {
-                rgblight_sethsv_at(0, 0, 30, 10);            // Dim white
-            }
+        // PLAY button (LED3 -> index 8)
+        if (is_streaming) {
+            rgblight_sethsv_at(170, 255, 220, 8); // BLUE = Streaming/Live
+        } else {
+            rgblight_sethsv_at(0, 0, 35, 8);
+        }
 
-            // LED 11: Streaming tally
-            if (is_streaming) {
-                rgblight_sethsv_at(170, 255, 200, 11);       // Blue
-            } else {
-                rgblight_sethsv_at(0, 0, 30, 11);            // Dim white
-            }
+        // REC button (LED6 -> index 9)
+        if (is_recording) {
+            rgblight_sethsv_at(0, 255, 255, 9);   // RED = Recording Active
+        } else {
+            rgblight_sethsv_at(0, 0, 35, 9);
+        }
+
+        // Encoders (LED8 -> index 6, LED11 -> index 7)
+        rgblight_sethsv_at(40, 255, 80, 6);   // Warm Amber
+        rgblight_sethsv_at(40, 255, 80, 7);   // Warm Amber
+
+        // Status LEDs (LED9 -> index 10, LED12 -> index 11)
+        switch (stream_health) {
+            case HEALTH_OK:
+                rgblight_sethsv_at(85, 255, 100, 10);
+                rgblight_sethsv_at(85, 255, 100, 11);
+                break;
+            case HEALTH_WARNING:
+                rgblight_sethsv_at(30, 255, 180, 10);
+                rgblight_sethsv_at(30, 255, 180, 11);
+                break;
+            case HEALTH_CRITICAL:
+                rgblight_sethsv_at(0, 255, 255, 10);
+                rgblight_sethsv_at(0, 255, 255, 11);
+                break;
         }
     }
     #endif
